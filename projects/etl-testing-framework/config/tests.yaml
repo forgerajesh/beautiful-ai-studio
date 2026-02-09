@@ -1,4 +1,8 @@
 suite: demo_etl_validation
+ai:
+  enabled: false
+  model: gpt-4o-mini
+  base_url: https://api.openai.com/v1
 adapter:
   kind: sqlite
   database_path: demo_etl.db

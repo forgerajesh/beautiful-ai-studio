@@ -52,3 +52,26 @@ pytest -q --junitxml=reports/junit.xml -m "critical or high"
 ## Notes
 - Default adapter is SQLite for local runnable demo.
 - Add Snowflake/BigQuery/Databricks adapters by implementing `DBAdapter`.
+
+## AI-assisted triage (OpenAI-compatible)
+The framework can enrich assertion failures with AI debugging hints.
+
+Enable in `config/tests.yaml`:
+```yaml
+ai:
+  enabled: true
+  model: gpt-4o-mini
+  base_url: https://api.openai.com/v1
+```
+
+Set key:
+```bash
+export OPENAI_API_KEY=... 
+```
+
+On failure, output includes:
+- likely root causes
+- immediate debugging SQL checks
+- suggested fix plan
+
+If AI is disabled or key is missing, tests still run normally.
