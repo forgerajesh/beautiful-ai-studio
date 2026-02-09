@@ -1,0 +1,58 @@
+suite: demo_etl_validation
+adapter:
+  kind: sqlite
+  database_path: demo_etl.db
+
+tests:
+  - id: schema_target_orders
+    type: schema
+    severity: critical
+    tags: [critical, schema]
+    params:
+      table: target_orders
+      expected_columns:
+        - {name: order_id, type: INTEGER, nullable: false}
+        - {name: customer_id, type: INTEGER, nullable: false}
+        - {name: amount, type: REAL, nullable: false}
+        - {name: updated_at, type: TEXT, nullable: false}
+
+  - id: rowcount_source_vs_target
+    type: rowcount_recon
+    severity: high
+    tags: [recon]
+    params:
+      source_sql: "select count(*) from source_orders"
+      target_sql: "select count(*) from target_orders"
+      tolerance_pct: 0.0
+
+  - id: business_rule_amount_positive
+    type: business_rule
+    severity: critical
+    tags: [rule]
+    params:
+      sql: "select count(*) from target_orders where amount <= 0"
+      expected: 0
+
+  - id: incremental_watermark_lag
+    type: incremental
+    severity: critical
+    tags: [incremental]
+    params:
+      sql: "select (strftime('%s','now') - strftime('%s', max(updated_at))) / 60.0 from target_orders"
+      max_lag_minutes: 120
+
+  - id: scd2_single_current
+    type: scd2
+    severity: critical
+    tags: [scd2]
+    params:
+      sql: |
+        select count(*)
+        from (
+          select customer_id
+          from dim_customer_hist
+          where is_current = 1
+          group by customer_id
+          having count(*) > 1
+        ) x
+      expected_rows: 0
