@@ -1,2 +1,5 @@
 pytest==8.3.5
 PyYAML==6.0.2
+langchain==0.3.19
+langgraph==0.2.74
+langchain-openai==0.3.7

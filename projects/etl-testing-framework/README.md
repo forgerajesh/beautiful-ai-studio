@@ -75,3 +75,24 @@ On failure, output includes:
 - suggested fix plan
 
 If AI is disabled or key is missing, tests still run normally.
+
+## AI Agent (LangChain + LangGraph)
+This starter now includes an ETL Test AI Agent that can:
+- plan test scope from user intent
+- execute pytest suites
+- analyze failures with OpenAI-compatible LLM
+- output remediation notes
+
+### Run agent
+```bash
+cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export OPENAI_API_KEY=your_key
+python -m agent.run_agent --request "run critical ETL checks and provide remediation"
+```
+
+Output artifacts:
+- `reports/junit.xml`
+- `reports/ai_remediation.md`
