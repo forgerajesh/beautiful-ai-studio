@@ -1,0 +1,9 @@
+lineage:
+  - source: source_orders
+    target: target_orders
+    key_map:
+      order_id: order_id
+  - source: target_orders
+    target: dim_customer_hist
+    key_map:
+      customer_id: customer_id

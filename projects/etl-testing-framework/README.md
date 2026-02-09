@@ -96,3 +96,21 @@ python -m agent.run_agent --request "run critical ETL checks and provide remedia
 Output artifacts:
 - `reports/junit.xml`
 - `reports/ai_remediation.md`
+
+## Auto-generate tests from schema + lineage
+Generate additional checks from table schemas and `config/lineage.yaml`:
+
+```bash
+PYTHONPATH=. python -m agent.generate_tests
+```
+
+Output:
+- `agent/generated/generated_tests.yaml`
+
+Includes generated checks for:
+- schema baseline
+- PK uniqueness
+- not-null constraints
+- freshness heuristics
+- lineage rowcount reconciliation
+- lineage orphan/integrity checks

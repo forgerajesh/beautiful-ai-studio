@@ -1,0 +1,248 @@
+suite: generated_suite
+generated_from: schema_and_lineage_metadata
+tests:
+- id: schema_source_orders
+  type: schema
+  severity: critical
+  tags:
+  - generated
+  - schema
+  - critical
+  params:
+    table: source_orders
+    expected_columns:
+    - name: order_id
+      type: INTEGER
+      nullable: true
+    - name: customer_id
+      type: INTEGER
+      nullable: false
+    - name: amount
+      type: REAL
+      nullable: false
+    - name: updated_at
+      type: TEXT
+      nullable: false
+- id: unique_source_orders_order_id
+  type: business_rule
+  severity: critical
+  tags:
+  - generated
+  - uniqueness
+  - critical
+  params:
+    sql: select count(*) from (select order_id, count(*) c from source_orders group
+      by order_id having count(*) > 1) x
+    expected: 0
+- id: not_null_source_orders_customer_id
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from source_orders where customer_id is null
+    expected: 0
+- id: not_null_source_orders_amount
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from source_orders where amount is null
+    expected: 0
+- id: not_null_source_orders_updated_at
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from source_orders where updated_at is null
+    expected: 0
+- id: freshness_source_orders_updated_at
+  type: incremental
+  severity: high
+  tags:
+  - generated
+  - freshness
+  params:
+    sql: select (strftime('%s','now') - strftime('%s', max(updated_at))) / 60.0 from
+      source_orders
+    max_lag_minutes: 180
+- id: schema_target_orders
+  type: schema
+  severity: critical
+  tags:
+  - generated
+  - schema
+  - critical
+  params:
+    table: target_orders
+    expected_columns:
+    - name: order_id
+      type: INTEGER
+      nullable: true
+    - name: customer_id
+      type: INTEGER
+      nullable: false
+    - name: amount
+      type: REAL
+      nullable: false
+    - name: updated_at
+      type: TEXT
+      nullable: false
+- id: unique_target_orders_order_id
+  type: business_rule
+  severity: critical
+  tags:
+  - generated
+  - uniqueness
+  - critical
+  params:
+    sql: select count(*) from (select order_id, count(*) c from target_orders group
+      by order_id having count(*) > 1) x
+    expected: 0
+- id: not_null_target_orders_customer_id
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from target_orders where customer_id is null
+    expected: 0
+- id: not_null_target_orders_amount
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from target_orders where amount is null
+    expected: 0
+- id: not_null_target_orders_updated_at
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from target_orders where updated_at is null
+    expected: 0
+- id: freshness_target_orders_updated_at
+  type: incremental
+  severity: high
+  tags:
+  - generated
+  - freshness
+  params:
+    sql: select (strftime('%s','now') - strftime('%s', max(updated_at))) / 60.0 from
+      target_orders
+    max_lag_minutes: 180
+- id: schema_dim_customer_hist
+  type: schema
+  severity: critical
+  tags:
+  - generated
+  - schema
+  - critical
+  params:
+    table: dim_customer_hist
+    expected_columns:
+    - name: customer_id
+      type: INTEGER
+      nullable: false
+    - name: version
+      type: INTEGER
+      nullable: false
+    - name: is_current
+      type: INTEGER
+      nullable: false
+    - name: valid_from
+      type: TEXT
+      nullable: false
+    - name: valid_to
+      type: TEXT
+      nullable: true
+- id: not_null_dim_customer_hist_customer_id
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from dim_customer_hist where customer_id is null
+    expected: 0
+- id: not_null_dim_customer_hist_version
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from dim_customer_hist where version is null
+    expected: 0
+- id: not_null_dim_customer_hist_is_current
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from dim_customer_hist where is_current is null
+    expected: 0
+- id: not_null_dim_customer_hist_valid_from
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - not_null
+  params:
+    sql: select count(*) from dim_customer_hist where valid_from is null
+    expected: 0
+- id: lineage_recon_source_orders_to_target_orders_order_id
+  type: rowcount_recon
+  severity: high
+  tags:
+  - generated
+  - lineage
+  - recon
+  params:
+    source_sql: select count(*) from source_orders
+    target_sql: select count(*) from target_orders
+    tolerance_pct: 5.0
+- id: lineage_orphan_source_orders_to_target_orders_order_id
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - lineage
+  - integrity
+  params:
+    sql: select count(*) from source_orders s left join target_orders t on s.order_id=t.order_id
+      where t.order_id is null
+    expected: 0
+- id: lineage_recon_target_orders_to_dim_customer_hist_customer_id
+  type: rowcount_recon
+  severity: high
+  tags:
+  - generated
+  - lineage
+  - recon
+  params:
+    source_sql: select count(*) from target_orders
+    target_sql: select count(*) from dim_customer_hist
+    tolerance_pct: 5.0
+- id: lineage_orphan_target_orders_to_dim_customer_hist_customer_id
+  type: business_rule
+  severity: high
+  tags:
+  - generated
+  - lineage
+  - integrity
+  params:
+    sql: select count(*) from target_orders s left join dim_customer_hist t on s.customer_id=t.customer_id
+      where t.customer_id is null
+    expected: 0
