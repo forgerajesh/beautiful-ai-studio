@@ -204,7 +204,7 @@ tests:
     expected: 0
 - id: lineage_recon_source_orders_to_target_orders_order_id
   type: rowcount_recon
-  severity: high
+  severity: critical
   tags:
   - generated
   - lineage
@@ -226,7 +226,7 @@ tests:
     expected: 0
 - id: lineage_recon_target_orders_to_dim_customer_hist_customer_id
   type: rowcount_recon
-  severity: high
+  severity: critical
   tags:
   - generated
   - lineage

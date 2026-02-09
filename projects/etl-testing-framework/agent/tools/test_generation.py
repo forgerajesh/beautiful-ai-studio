@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 import yaml
 
 from framework.runner_context import RunnerContext
+from agent.tools.severity_ranker import rank_severity
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -15,7 +16,7 @@ def infer_tests_from_table(table: str, schema: List[Dict[str, Any]]) -> List[Dic
         {
             "id": f"schema_{table}",
             "type": "schema",
-            "severity": "critical",
+            "severity": rank_severity(table, ["schema", "critical"], default="high"),
             "tags": ["generated", "schema", "critical"],
             "params": {
                 "table": table,
@@ -35,7 +36,7 @@ def infer_tests_from_table(table: str, schema: List[Dict[str, Any]]) -> List[Dic
             {
                 "id": f"unique_{table}_{'_'.join(pk_cols)}",
                 "type": "business_rule",
-                "severity": "critical",
+                "severity": rank_severity(table, ["uniqueness", "critical"], default="high"),
                 "tags": ["generated", "uniqueness", "critical"],
                 "params": {
                     "sql": f"select count(*) from (select {cols}, count(*) c from {table} group by {cols} having count(*) > 1) x",
@@ -51,7 +52,7 @@ def infer_tests_from_table(table: str, schema: List[Dict[str, Any]]) -> List[Dic
             {
                 "id": f"not_null_{table}_{col}",
                 "type": "business_rule",
-                "severity": "high",
+                "severity": rank_severity(table, ["not_null"], default="high"),
                 "tags": ["generated", "not_null"],
                 "params": {
                     "sql": f"select count(*) from {table} where {col} is null",
@@ -68,7 +69,7 @@ def infer_tests_from_table(table: str, schema: List[Dict[str, Any]]) -> List[Dic
             {
                 "id": f"freshness_{table}_{c}",
                 "type": "incremental",
-                "severity": "high",
+                "severity": rank_severity(table, ["freshness"], default="high"),
                 "tags": ["generated", "freshness"],
                 "params": {
                     "sql": f"select (strftime('%s','now') - strftime('%s', max({c}))) / 60.0 from {table}",
@@ -100,7 +101,7 @@ def infer_tests_from_lineage(edges: list) -> list:
                 {
                     "id": f"lineage_recon_{src}_to_{tgt}_{s_col}",
                     "type": "rowcount_recon",
-                    "severity": "high",
+                    "severity": rank_severity(tgt, ["recon", "integrity"], default="high"),
                     "tags": ["generated", "lineage", "recon"],
                     "params": {
                         "source_sql": f"select count(*) from {src}",
@@ -113,7 +114,7 @@ def infer_tests_from_lineage(edges: list) -> list:
                 {
                     "id": f"lineage_orphan_{src}_to_{tgt}_{s_col}",
                     "type": "business_rule",
-                    "severity": "high",
+                    "severity": rank_severity(tgt, ["integrity"], default="high"),
                     "tags": ["generated", "lineage", "integrity"],
                     "params": {
                         "sql": (

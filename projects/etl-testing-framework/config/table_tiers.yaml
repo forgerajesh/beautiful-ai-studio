@@ -1,0 +1,12 @@
+table_tiers:
+  source_orders: 2
+  target_orders: 1
+  dim_customer_hist: 1
+
+business_impact_weights:
+  schema: 1.0
+  uniqueness: 1.0
+  not_null: 0.8
+  freshness: 0.9
+  recon: 0.9
+  integrity: 1.0

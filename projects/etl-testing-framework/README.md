@@ -114,3 +114,11 @@ Includes generated checks for:
 - freshness heuristics
 - lineage rowcount reconciliation
 - lineage orphan/integrity checks
+
+### Severity ranking by business impact + table tier
+Generated tests are now auto-ranked (`critical`/`high`) using:
+- `config/table_tiers.yaml` (Tier 1/2/3)
+- `business_impact_weights` per test category
+
+Tune ranking by editing:
+- `config/table_tiers.yaml`
