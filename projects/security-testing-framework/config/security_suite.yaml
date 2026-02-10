@@ -1,0 +1,38 @@
+suite: full_security_bundle
+
+targets:
+  web_url: https://example.com
+  source_dir: .
+
+scanners:
+  sast:
+    semgrep:
+      enabled: true
+      config: p/security-audit
+    bandit:
+      enabled: true
+      targets: [framework, scripts]
+  dast:
+    zap_baseline:
+      enabled: true
+    zap_full:
+      enabled: true
+      max_minutes: 10
+  vuln:
+    pip_audit:
+      enabled: true
+    trivy_fs:
+      enabled: true
+      severity: HIGH,CRITICAL
+  secrets:
+    gitleaks:
+      enabled: true
+  iac:
+    checkov:
+      enabled: true
+      directory: .
+
+reporting:
+  output_dir: reports
+  aggregate_file: security_bundle_summary.json
+  html_file: security_bundle_summary.html

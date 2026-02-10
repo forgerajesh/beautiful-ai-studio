@@ -19,10 +19,16 @@ jobs:
           source .venv/bin/activate
           pip install -r requirements.txt
 
-      - name: Run SECQ
+      - name: Run SECQ core checks
         run: |
           source .venv/bin/activate
           python scripts/secq.py --config config/targets.yaml
+
+      - name: Run full security suite (SAST/DAST/Vuln/Secrets/IaC)
+        run: |
+          source .venv/bin/activate
+          ./scripts/run_full_security_suite.sh https://example.com
+        continue-on-error: true
 
       - name: Generate SARIF
         run: |

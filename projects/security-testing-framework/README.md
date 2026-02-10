@@ -113,3 +113,39 @@ Output:
 - `sarif/security_report.sarif`
 
 You can upload SARIF in GitHub using `github/codeql-action/upload-sarif`.
+
+## Full Security Bundle (implemented)
+
+This framework now includes all major classes:
+- **SAST**: Semgrep, Bandit
+- **DAST**: OWASP ZAP baseline + full scan
+- **Vulnerability scanning**: pip-audit, Trivy FS
+- **Secrets scanning**: Gitleaks
+- **IaC scanning**: Checkov
+- **SBOM**: CycloneDX (`sbom/bom.json`)
+- **SARIF export**: GitHub Security integration
+
+### Run complete suite
+```bash
+cd /home/vnc/.openclaw/workspace/projects/security-testing-framework
+./scripts/run_full_security_suite.sh https://example.com
+```
+
+Generated artifacts:
+- `reports/semgrep.json`
+- `reports/bandit.json`
+- `reports/pip_audit.json`
+- `reports/trivy_fs.json`
+- `reports/gitleaks.json`
+- `reports/checkov.json`
+- `reports/zap_report.json`
+- `reports/zap_full_report.json`
+- `reports/security_bundle_summary.json`
+- `reports/security_bundle_summary.html`
+- `sarif/security_report.sarif`
+- `sbom/bom.json`
+
+### CI behavior
+- core SECQ checks run on every PR/push
+- full security bundle runs and publishes artifacts
+- SARIF is uploaded to GitHub Security tab
