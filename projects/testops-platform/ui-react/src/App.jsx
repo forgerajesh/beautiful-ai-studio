@@ -5,6 +5,7 @@ import {
   sendAgentMessage, getTenants, getTenantChannels, saveTenantChannels, setApiKey,
   createJiraIssue, createTestRailRun, generateArtifacts,
   getWave3Executive, getWave3Trends, listWave3Checkpoints, approveWave3Checkpoint,
+  validateContract, buildTraceability,
 } from './api'
 
 export default function App() {
@@ -25,6 +26,9 @@ export default function App() {
   const [execSummary, setExecSummary] = useState(null)
   const [trendPoints, setTrendPoints] = useState([])
   const [hitlQueue, setHitlQueue] = useState([])
+  const [contractPath, setContractPath] = useState('requirements/sample-contract.json')
+  const [traceReqPath, setTraceReqPath] = useState('requirements/requirements.json')
+  const [traceTestsPath, setTraceTestsPath] = useState('artifacts/TESTCASES.md')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -118,6 +122,16 @@ export default function App() {
     const res = await approveWave3Checkpoint(id, 'ui-approver')
     setOutput(JSON.stringify(res, null, 2))
     await refreshExecutive()
+  }
+
+  const onValidateContract = async () => {
+    const res = await validateContract(contractPath)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onBuildTraceability = async () => {
+    const res = await buildTraceability({ requirements_path: traceReqPath, tests_path: traceTestsPath })
+    setOutput(JSON.stringify(res, null, 2))
   }
 
   const updateChannelField = (name, key, value) => {
@@ -261,6 +275,17 @@ export default function App() {
             </li>
           ))}
         </ul>
+      </Card>
+
+      <Card title="Wave3.1 Testing Hardening">
+        <h4>Contract Validation</h4>
+        <input value={contractPath} onChange={(e) => setContractPath(e.target.value)} style={{ width: '80%' }} />
+        <button onClick={onValidateContract}>Validate Contract</button>
+
+        <h4 style={{ marginTop: 12 }}>Traceability Matrix</h4>
+        <div><input value={traceReqPath} onChange={(e) => setTraceReqPath(e.target.value)} style={{ width: '80%' }} /></div>
+        <div style={{ marginTop: 8 }}><input value={traceTestsPath} onChange={(e) => setTraceTestsPath(e.target.value)} style={{ width: '80%' }} /></div>
+        <button onClick={onBuildTraceability}>Build Traceability</button>
       </Card>
 
       <Card title="Realtime Logs (WebSocket)">
