@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Depends, WebSocket
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import json
@@ -25,6 +25,9 @@ from app.v3.queue.executor import run_distributed
 from app.v3.observability.telemetry import snapshot as telemetry_snapshot, instrument
 from app.v3.eval.harness import evaluate_run, persist_benchmark
 from app.v3.remediation.governance import propose_remediation, apply_remediation
+from app.v31.queue.backend import queue_backend_status
+from app.v31.observability.exporters import prometheus_text
+from app.v31.governance.audit import log_approval, list_audit
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -283,3 +286,32 @@ def v3_remediation_apply(payload: dict, role: str = Depends(get_role)):
     actions = payload.get("actions") or []
     approved = bool(payload.get("approved", False))
     return apply_remediation(actions, approved=approved)
+
+
+@app.get("/v3.1/queue/status")
+def v31_queue_status(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return queue_backend_status()
+
+
+@app.get("/v3.1/metrics", response_class=PlainTextResponse)
+def v31_metrics(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return prometheus_text()
+
+
+@app.post("/v3.1/remediation/apply")
+def v31_remediation_apply(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    actions = payload.get("actions") or []
+    approved = bool(payload.get("approved", False))
+    actor = str(payload.get("actor", role))
+    result = apply_remediation(actions, approved=approved)
+    audit = log_approval("remediation_apply", approved, actor, {"actions": actions, "result": result})
+    return {"result": result, "audit": audit}
+
+
+@app.get("/v3.1/audit")
+def v31_audit(limit: int = 100, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"events": list_audit(limit=limit)}

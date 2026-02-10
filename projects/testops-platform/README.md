@@ -89,8 +89,15 @@ Send header `X-API-Key`:
 - `POST /v3/remediation/propose` → governed remediation proposals
 - `POST /v3/remediation/apply` → approval-gated remediation apply
 
+## Enterprise-grade v3.1 hardening
+- `GET /v3.1/queue/status` → queue backend readiness (Redis-ready hook)
+- `GET /v3.1/metrics` → Prometheus text metrics exporter
+- `POST /v3.1/remediation/apply` → approval-gated remediation + persistent audit event
+- `GET /v3.1/audit` → approval audit trail
+
 Artifacts:
 - benchmark history: `reports/v3-benchmarks.json`
+- approval audit: `reports/v31-approval-audit.json`
 
 Endpoints:
 - `GET /health`
