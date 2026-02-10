@@ -29,5 +29,31 @@ features:
     mode: core
     project_path: ../security-testing-framework
 
+agent:
+  mode: command
+  channels:
+    telegram:
+      bot_token: ""
+    whatsapp:
+      webhook_enabled: true
+    discord:
+      webhook_enabled: true
+    slack:
+      webhook_enabled: true
+    signal:
+      webhook_enabled: true
+    imessage:
+      webhook_enabled: true
+    googlechat:
+      webhook_enabled: true
+    teams:
+      webhook_enabled: true
+    email:
+      webhook_enabled: true
+    sms:
+      webhook_enabled: true
+    webchat:
+      webhook_enabled: true
+
 reporting:
   out_dir: reports

@@ -3,12 +3,18 @@ import json
 
 from app.core.config import load_config
 from app.core.orchestrator import run_product_suite
+from app.agent.telegram_listener import run_telegram_listener
 
 
 def main():
     ap = argparse.ArgumentParser(description="TestOps Platform - unified product testing")
     ap.add_argument("--config", default="config/product.yaml")
+    ap.add_argument("--telegram-listen", action="store_true")
     args = ap.parse_args()
+
+    if args.telegram_listen:
+        run_telegram_listener(config_path=args.config)
+        return
 
     cfg = load_config(args.config)
     findings, report = run_product_suite(cfg)
