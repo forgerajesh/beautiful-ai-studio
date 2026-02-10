@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from typing import Optional
 
 from app.core.config import load_config
 from app.core.orchestrator import run_product_suite
@@ -17,6 +18,11 @@ class AgentMessageRequest(BaseModel):
     text: str
     raw: dict = {}
     config_path: str = "config/product.yaml"
+
+
+class RunAgentRequest(BaseModel):
+    config_path: str = "config/product.yaml"
+    agent: Optional[str] = None
 
 
 @app.get("/health")
@@ -41,6 +47,17 @@ def run_all(config_path: str = "config/product.yaml"):
         "reports": report,
         "findings": [f.__dict__ for f in findings],
     }
+
+
+@app.post("/agent/run")
+def agent_run(req: RunAgentRequest):
+    agent = AgentService(config_path=req.config_path)
+    if req.agent:
+        r = agent.run_one_agent(req.agent)
+        if not r:
+            return {"ok": False, "error": f"Unknown agent: {req.agent}"}
+        return {"ok": True, "result": r.__dict__}
+    return {"ok": True, "result": agent.run_all_agents()}
 
 
 @app.post("/agent/message")

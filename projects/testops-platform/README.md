@@ -64,9 +64,19 @@ curl -X POST http://localhost:8090/agent/message \
 - `/help`
 - `/run`
 - `/status`
+- `/agents`
+- `/run-agent <name>`
+- `/run-all-agents`
 - `/dashboard`
 - `/channels`
 - `/ask <goal>`
+
+## Built-in testing agents
+- `playwright` (functional UI workflows)
+- `api` (endpoint health/smoke)
+- `non_functional` (SLA/load checks)
+- `security` (SECQ integration)
+- `accessibility` (a11y suite integration)
 
 ## Telegram listener mode
 ```bash
