@@ -78,6 +78,11 @@ Send header `X-API-Key`:
 - `GET /tenants/{tenant_id}/channels`
 - `PUT /tenants/{tenant_id}/channels`
 
+## World-Class v2 endpoints
+- `POST /worldclass/plan` → goal-to-agent strategy
+- `POST /worldclass/run-goal` → execute planned agents + release decision
+- `GET /worldclass/maturity` → maturity score/tier
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

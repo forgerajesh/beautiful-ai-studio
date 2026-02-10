@@ -18,6 +18,9 @@ from app.api.workflows import list_workflows
 from app.auth.rbac import get_role, require_role
 from app.state.logbus import logbus
 from app.channels.config.store import list_tenants, get_tenant, upsert_tenant
+from app.worldclass.strategy_planner import plan_agents_from_goal
+from app.worldclass.policy_engine import evaluate_release
+from app.worldclass.maturity import compute_maturity
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -183,3 +186,51 @@ def tenant_channels_upsert(tenant_id: str, payload: dict, role: str = Depends(ge
     updated = upsert_tenant(tenant_id, payload)
     logbus.push("info", "tenant_channels_upsert", {"tenant_id": tenant_id})
     return {"ok": True, "tenant_id": tenant_id, "config": updated}
+
+
+@app.post("/worldclass/plan")
+def worldclass_plan(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    goal = str(payload.get("goal", ""))
+    return {"goal": goal, "recommended_agents": plan_agents_from_goal(goal)}
+
+
+@app.post("/worldclass/run-goal")
+def worldclass_run_goal(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    goal = str(payload.get("goal", ""))
+    agents = plan_agents_from_goal(goal)
+    svc = AgentService(config_path=str(payload.get("config_path", "config/product.yaml")))
+
+    results = []
+    for a in agents:
+        r = svc.run_one_agent(a)
+        if r:
+            results.append(r.__dict__)
+
+    decision = evaluate_release([
+        {
+            "status": x.get("status"),
+            "severity": "critical" if x.get("agent") == "security" and x.get("status") in ("FAIL", "ERROR") else "high" if x.get("status") in ("FAIL", "ERROR") else "low",
+        }
+        for x in results
+    ])
+    mat = compute_maturity(results, enabled_channels=11, enabled_agents=len(svc.registry.list()))
+
+    out = {
+        "goal": goal,
+        "agents": agents,
+        "results": results,
+        "release_decision": decision.__dict__,
+        "maturity": mat,
+    }
+    logbus.push("info", "worldclass_run_goal", {"goal": goal, "decision": decision.status, "score": decision.score})
+    return out
+
+
+@app.get("/worldclass/maturity")
+def worldclass_maturity(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    p = Path("reports/summary.json")
+    findings = json.loads(p.read_text()) if p.exists() else []
+    return compute_maturity(findings, enabled_channels=11, enabled_agents=5)
