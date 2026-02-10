@@ -173,9 +173,9 @@ Single-command experience:
 
 ```bash
 cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
-PYTHONPATH=. python -m etlq.cli run --email-mode on_fail
+PYTHONPATH=. python -m etlq.cli run --email-mode on_fail --brand "Raj Data Quality" --pdf
 # or
-./scripts/etlq run --email-mode on_fail
+./scripts/etlq run --email-mode on_fail --brand "Raj Data Quality" --pdf
 ```
 
 What it does in one command:
@@ -185,3 +185,9 @@ What it does in one command:
 4. Builds `reports/executive_report.html`
 
 Output summary is printed as JSON.
+
+
+Trend artifacts:
+- `reports/history.json`
+- `reports/executive_report.html`
+- `reports/executive_report.pdf` (best effort)
