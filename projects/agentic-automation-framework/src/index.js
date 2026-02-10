@@ -8,6 +8,7 @@ import { generateWorkflow, saveWorkflow } from "./agent/planner.js";
 import { appendHistory, buildDashboard } from "./agent/history.js";
 import { RunQueue } from "./agent/queue.js";
 import { runClaudeLikeAgent } from "./agent/claude_mode.js";
+import { recentFailureContext } from "./agent/memory.js";
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -78,7 +79,7 @@ async function runTelegramListener() {
   });
 
   log("Telegram listener started.");
-  log("Commands: /run <workflow-path> | /plan <prompt> | /ask <goal> | /dashboard");
+  log("Commands: /run <workflow-path> | /plan <prompt> | /ask <goal> | /memory | /dashboard");
 
   let offset = 0;
   while (true) {
@@ -125,13 +126,22 @@ async function runTelegramListener() {
         continue;
       }
 
+      if (cmd.text.startsWith("/memory")) {
+        const mem = recentFailureContext(5);
+        const txt = mem.length
+          ? mem.map((m, i) => `${i + 1}. ${m.goal} -> ${m.error}`).join("\n")
+          : "No recent failure memory.";
+        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: txt });
+        continue;
+      }
+
       if (cmd.text.startsWith("/dashboard")) {
         const p = buildDashboard();
         await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Dashboard: ${p}` });
         continue;
       }
 
-      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: "Use /run <workflow> | /plan <prompt> | /ask <goal> | /dashboard" });
+      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: "Use /run <workflow> | /plan <prompt> | /ask <goal> | /memory | /dashboard" });
     }
   }
 }

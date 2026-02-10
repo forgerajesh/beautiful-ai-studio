@@ -3,6 +3,7 @@ import path from "path";
 import { generateWorkflow, saveWorkflow } from "./planner.js";
 import { executeWorkflowFile } from "./engine.js";
 import { appendHistory, buildDashboard } from "./history.js";
+import { recentFailureContext, recordFailure } from "./memory.js";
 
 function persistRun(result) {
   appendHistory({
@@ -26,12 +27,17 @@ export async function runClaudeLikeAgent({
 
   const trace = [];
   let lastResult = null;
+  const recentFailures = recentFailureContext(5);
 
   for (let i = 1; i <= maxIterations; i++) {
+    const memoryBlock = recentFailures.length
+      ? `\nRecent failures context:\n${recentFailures.map((f, idx) => `${idx + 1}) goal=${f.goal} | error=${f.error}`).join("\n")}`
+      : "";
+
     const prompt =
       i === 1
-        ? goal
-        : `${goal}\nPrevious attempt failed with error: ${lastResult?.error || "unknown"}\nGenerate a safer, simpler recovery workflow.`;
+        ? `${goal}${memoryBlock}`
+        : `${goal}\nPrevious attempt failed with error: ${lastResult?.error || "unknown"}\nGenerate a safer, simpler recovery workflow.${memoryBlock}`;
 
     const wf = await generateWorkflow(prompt);
     const file = path.resolve(outputDir, `agentic-${Date.now()}-${i}.json`);
@@ -43,6 +49,10 @@ export async function runClaudeLikeAgent({
 
     trace.push({ iteration: i, workflowFile: file, result });
     lastResult = result;
+
+    if (!result.ok) {
+      recordFailure({ goal, error: result.error || "unknown", workflowFile: file, iteration: i });
+    }
 
     if (result.ok) {
       return {

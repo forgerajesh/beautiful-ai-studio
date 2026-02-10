@@ -3,6 +3,7 @@
 A practical agentic automation framework using **Playwright** with:
 - **Natural-language → workflow generation**
 - **Claude-like goal mode** (plan → execute → retry with self-correction)
+- **Failure memory-aware planning** (uses recent failures as context)
 - **Run history dashboard**
 - **Retry queue + concurrency control**
 - Telegram + WhatsApp notifications
@@ -79,6 +80,7 @@ Supported Telegram commands:
 - `/run <workflow-path>`
 - `/plan <natural language prompt>`
 - `/ask <goal>`
+- `/memory` (show recent failure memory used by agent)
 - `/dashboard`
 
 Example:
