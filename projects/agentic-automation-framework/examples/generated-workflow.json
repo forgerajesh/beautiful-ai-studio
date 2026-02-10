@@ -1,0 +1,28 @@
+{
+  "name": "Generated: SauceDemo login",
+  "url": "https://www.saucedemo.com/",
+  "steps": [
+    {
+      "action": "type",
+      "selector": "#user-name",
+      "text": "standard_user"
+    },
+    {
+      "action": "type",
+      "selector": "#password",
+      "text": "secret_sauce"
+    },
+    {
+      "action": "click",
+      "selector": "#login-button"
+    },
+    {
+      "action": "expectUrlContains",
+      "value": "inventory.html"
+    },
+    {
+      "action": "screenshot",
+      "path": "reports/generated-saucedemo.png"
+    }
+  ]
+}

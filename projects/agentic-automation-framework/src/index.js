@@ -7,6 +7,7 @@ import { pollTelegramUpdates, parseTelegramCommand, sendTelegramMessage } from "
 import { generateWorkflow, saveWorkflow } from "./agent/planner.js";
 import { appendHistory, buildDashboard } from "./agent/history.js";
 import { RunQueue } from "./agent/queue.js";
+import { runClaudeLikeAgent } from "./agent/claude_mode.js";
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -19,6 +20,7 @@ const telegramListen = process.argv.includes("--telegram-listen");
 const dashboardOnly = process.argv.includes("--dashboard");
 const planPrompt = arg("--plan");
 const planOut = arg("--out") || "./examples/generated-workflow.json";
+const askPrompt = arg("--ask");
 
 function saveRun(result) {
   appendHistory({
@@ -52,6 +54,13 @@ async function runPlanner() {
   log(JSON.stringify(wf, null, 2));
 }
 
+async function runAsk() {
+  if (!askPrompt) throw new Error("Missing --ask <goal>");
+  const result = await runClaudeLikeAgent({ goal: askPrompt, notify });
+  log("Agentic result:", JSON.stringify(result, null, 2));
+  if (!result.ok) process.exitCode = 1;
+}
+
 async function runTelegramListener() {
   if (!env.telegram.token) throw new Error("TELEGRAM_BOT_TOKEN missing");
 
@@ -69,7 +78,7 @@ async function runTelegramListener() {
   });
 
   log("Telegram listener started.");
-  log("Commands: /run <workflow-path> | /plan <prompt> | /dashboard");
+  log("Commands: /run <workflow-path> | /plan <prompt> | /ask <goal> | /dashboard");
 
   let offset = 0;
   while (true) {
@@ -105,13 +114,24 @@ async function runTelegramListener() {
         continue;
       }
 
+      if (cmd.text.startsWith("/ask ")) {
+        const goal = cmd.text.replace("/ask ", "").trim();
+        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Agentic run started for: ${goal}` });
+        const result = await runClaudeLikeAgent({ goal, notify: true });
+        const text = result.ok
+          ? `✅ Agent completed in ${result.iterationsUsed} iteration(s). Final URL: ${result.final?.finalUrl || "n/a"}`
+          : `❌ Agent failed after ${result.iterationsUsed} iteration(s). Error: ${result.final?.error || "unknown"}`;
+        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text });
+        continue;
+      }
+
       if (cmd.text.startsWith("/dashboard")) {
         const p = buildDashboard();
         await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Dashboard: ${p}` });
         continue;
       }
 
-      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: "Use /run <workflow> | /plan <prompt> | /dashboard" });
+      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: "Use /run <workflow> | /plan <prompt> | /ask <goal> | /dashboard" });
     }
   }
 }
@@ -125,6 +145,10 @@ async function runTelegramListener() {
     }
     if (planPrompt) {
       await runPlanner();
+      return;
+    }
+    if (askPrompt) {
+      await runAsk();
       return;
     }
     if (telegramListen) await runTelegramListener();

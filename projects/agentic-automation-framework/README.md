@@ -1,7 +1,8 @@
-# Agentic Playwright Automation Framework (Telegram + WhatsApp)
+# Agentic Playwright Automation Framework (Claude-like Mode + Telegram + WhatsApp)
 
 A practical agentic automation framework using **Playwright** with:
 - **Natural-language → workflow generation**
+- **Claude-like goal mode** (plan → execute → retry with self-correction)
 - **Run history dashboard**
 - **Retry queue + concurrency control**
 - Telegram + WhatsApp notifications
@@ -18,7 +19,17 @@ node src/index.js --plan "login to saucedemo and verify inventory" --out ./examp
 - Uses OpenAI-compatible API if `OPENAI_API_KEY` is set
 - Falls back to deterministic local generator if AI is unavailable
 
-### 2) Run history dashboard
+### 2) Claude-like goal execution mode
+Run an objective directly (agent plans and executes; retries with improved prompt when needed):
+```bash
+npm run ask
+# or
+node src/index.js --ask "login to saucedemo and verify inventory page" --notify
+```
+Control iterations:
+- `AGENT_MAX_ITERATIONS` (default `2`)
+
+### 3) Run history dashboard
 Build dashboard from run history:
 ```bash
 npm run dashboard
@@ -27,7 +38,7 @@ Outputs:
 - `reports/run-history.json`
 - `reports/dashboard.html`
 
-### 3) Retry queue + concurrency control
+### 4) Retry queue + concurrency control
 Telegram listener mode now executes queued runs with:
 - configurable concurrency (`RUN_CONCURRENCY`)
 - configurable retries (`RUN_RETRIES`)
@@ -45,10 +56,12 @@ npx playwright install chromium
 ## Configure `.env`
 - `HEADLESS=true|false`
 - `OPENAI_API_KEY` (optional, for AI workflow planning)
+- `OPENAI_MODEL`, `OPENAI_BASE_URL` (optional)
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 - `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TO`
 - `TELEGRAM_ALLOWED_USER_IDS` (optional access control)
 - `RUN_CONCURRENCY`, `RUN_RETRIES`
+- `AGENT_MAX_ITERATIONS`
 
 ---
 
@@ -65,12 +78,14 @@ npm run telegram:listen
 Supported Telegram commands:
 - `/run <workflow-path>`
 - `/plan <natural language prompt>`
+- `/ask <goal>`
 - `/dashboard`
 
 Example:
 ```text
 /run ./examples/saucedemo-login.json
 /plan login to saucedemo and take screenshot after inventory page
+/ask login to saucedemo and verify inventory with screenshot
 /dashboard
 ```
 
