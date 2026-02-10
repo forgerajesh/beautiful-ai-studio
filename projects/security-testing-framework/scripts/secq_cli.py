@@ -2,6 +2,7 @@
 import argparse
 import json
 import subprocess
+import os
 from pathlib import Path
 from datetime import datetime, UTC
 
@@ -9,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(cmd):
-    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(ROOT)
+    p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, env=env)
     return p.returncode, p.stdout, p.stderr
 
 

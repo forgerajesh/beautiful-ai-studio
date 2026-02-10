@@ -5,6 +5,12 @@ OUT_DIR="reports"
 mkdir -p "$OUT_DIR"
 
 echo "Running OWASP ZAP full scan against: $TARGET_URL"
+if ! command -v docker >/dev/null 2>&1; then
+  echo '{"warning":"docker not available, zap full skipped", "site": []}' > "$OUT_DIR/zap_full_report.json"
+  echo "ZAP full skipped (docker not found)"
+  exit 0
+fi
+
 docker run --rm -t \
   -v "$(pwd)/$OUT_DIR:/zap/wrk" \
   ghcr.io/zaproxy/zaproxy:stable \
