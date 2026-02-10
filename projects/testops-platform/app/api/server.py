@@ -39,6 +39,9 @@ from app.wave2.policy.engine import evaluate_policy
 from app.wave2.jira.sync import add_comment, transition_issue
 from app.wave2.risk.selector import select_agents_by_risk
 from app.wave2.approval.workflow import create_request, approve, list_requests
+from app.wave3.synthesis.pr_diff_synth import synthesize_tests_from_diff
+from app.wave3.remediation.hitl import create_checkpoint, approve_checkpoint, list_checkpoints
+from app.wave3.analytics.executive import build_executive_summary
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -448,3 +451,38 @@ def wave2_approval_approve(payload: dict, role: str = Depends(get_role)):
 def wave2_approval_list(role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return {"requests": list_requests()}
+
+
+@app.post('/wave3/synthesis/pr-diff')
+def wave3_synthesis_pr_diff(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return synthesize_tests_from_diff(str(payload.get('pr_diff', '')))
+
+
+@app.post('/wave3/remediation/checkpoint/create')
+def wave3_hitl_create(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return create_checkpoint(
+        title=str(payload.get('title', 'Wave3 HITL Checkpoint')),
+        actions=payload.get('actions') or [],
+        created_by=str(payload.get('created_by', role)),
+    )
+
+
+@app.post('/wave3/remediation/checkpoint/approve')
+def wave3_hitl_approve(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    row = approve_checkpoint(str(payload.get('checkpoint_id', '')), str(payload.get('actor', role)))
+    return {"ok": row is not None, "checkpoint": row}
+
+
+@app.get('/wave3/remediation/checkpoint/list')
+def wave3_hitl_list(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"checkpoints": list_checkpoints()}
+
+
+@app.get('/wave3/analytics/executive')
+def wave3_analytics_executive(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return build_executive_summary()

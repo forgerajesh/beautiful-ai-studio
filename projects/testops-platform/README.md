@@ -146,6 +146,22 @@ Wave2 endpoints:
 - `POST /wave2/approval/approve`
 - `GET /wave2/approval/list`
 
+## Wave3 (advanced implementation)
+- AI PR-diff test synthesis (fallback-safe)
+- Autonomous remediation checkpoints with HITL approvals
+- Executive analytics summary generation
+
+Wave3 endpoints:
+- `POST /wave3/synthesis/pr-diff`
+- `POST /wave3/remediation/checkpoint/create`
+- `POST /wave3/remediation/checkpoint/approve`
+- `GET /wave3/remediation/checkpoint/list`
+- `GET /wave3/analytics/executive`
+
+Wave3 artifacts:
+- `reports/wave3-hitl.json`
+- `reports/analytics/executive-summary.json`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)
