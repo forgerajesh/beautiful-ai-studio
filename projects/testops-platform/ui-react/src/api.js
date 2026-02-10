@@ -91,6 +91,13 @@ export const runChaos = (scenario) => api('/wave3.2/chaos/run', {
   body: JSON.stringify({ scenario }),
 })
 
+export const getEtlProfiles = () => api('/etl/profiles')
+export const runEtl = (profile) => api('/etl/run', {
+  method: 'POST',
+  body: JSON.stringify({ profile }),
+})
+export const getLastEtlReport = () => api('/etl/last-report')
+
 export const getTestdataProfiles = () => api('/testdata/profiles')
 export const seedTestdata = (profile) => api('/testdata/seed', {
   method: 'POST',

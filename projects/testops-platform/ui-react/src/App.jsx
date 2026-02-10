@@ -9,9 +9,13 @@ import {
   recordFlaky, listFlaky, evalPromotion, compareVisual, perfPercentiles, runChaos,
   listArtifacts, readArtifact, runDoctor,
   getTestdataProfiles, seedTestdata, loadTestdata, generateTestdata, resetTestdata, getTestdataStatus,
+  getEtlProfiles, runEtl, getLastEtlReport,
 } from './api'
 
+const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Tenants', 'Logs']
+
 export default function App() {
+  const [activeTab, setActiveTab] = useState('Overview')
   const [channels, setChannels] = useState([])
   const [agents, setAgents] = useState([])
   const [workflows, setWorkflows] = useState([])
@@ -47,6 +51,9 @@ export default function App() {
   const [testdataProfile, setTestdataProfile] = useState('default')
   const [tdUsers, setTdUsers] = useState(10)
   const [tdOrders, setTdOrders] = useState(20)
+  const [etlProfiles, setEtlProfiles] = useState([])
+  const [etlProfile, setEtlProfile] = useState('retail_orders')
+  const [etlReport, setEtlReport] = useState(null)
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -55,15 +62,10 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const c = await getChannels()
-      const a = await getAgents()
-      const w = await getWorkflows()
-      const t = await getTenants()
-      const ex = await getWave3Executive()
-      const tr = await getWave3Trends()
-      const cp = await listWave3Checkpoints()
-      const af = await listArtifacts()
-      const tdp = await getTestdataProfiles()
+      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr] = await Promise.all([
+        getChannels(), getAgents(), getWorkflows(), getTenants(), getWave3Executive(), getWave3Trends(), listWave3Checkpoints(),
+        listArtifacts(), getTestdataProfiles(), getEtlProfiles(), getLastEtlReport(),
+      ])
       setChannels(c.supported || [])
       setAgents(a.agents || [])
       setWorkflows(w.workflows || [])
@@ -74,6 +76,9 @@ export default function App() {
       setSelectedArtifact((af.files || [])[0] || '')
       setTestdataProfiles(tdp.profiles || [])
       setTestdataProfile((tdp.profiles || [])[0] || 'default')
+      setEtlProfiles(etlp.profiles || [])
+      setEtlProfile((etlp.profiles || [])[0]?.name || 'retail_orders')
+      if (etlr?.ok) setEtlReport(etlr)
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -111,131 +116,18 @@ export default function App() {
     const tc = await getTenantChannels(id)
     setTenantCfg(tc.config || { channels: {} })
   }
-
-  const onTenantSave = async () => {
-    const res = await saveTenantChannels(tenantId, tenantCfg)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onCreateJira = async () => {
-    const res = await createJiraIssue({ summary: jiraSummary, description: jiraDesc, issue_type: 'Task' })
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onCreateTestRail = async () => {
-    const res = await createTestRailRun({ name: trRunName })
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onGenerateArtifacts = async () => {
-    const res = await generateArtifacts({ product_name: artifactProduct })
-    setOutput(JSON.stringify(res, null, 2))
-  }
+  const onTenantSave = async () => setOutput(JSON.stringify(await saveTenantChannels(tenantId, tenantCfg), null, 2))
 
   const refreshExecutive = async () => {
-    const ex = await getWave3Executive()
-    const tr = await getWave3Trends()
-    const cp = await listWave3Checkpoints()
+    const [ex, tr, cp] = await Promise.all([getWave3Executive(), getWave3Trends(), listWave3Checkpoints()])
     setExecSummary(ex)
     setTrendPoints(tr.points || [])
     setHitlQueue(cp.checkpoints || [])
-    setOutput('Wave3 executive dashboard refreshed')
   }
 
-  const approveCheckpoint = async (id) => {
-    const res = await approveWave3Checkpoint(id, 'ui-approver')
-    setOutput(JSON.stringify(res, null, 2))
-    await refreshExecutive()
-  }
-
-  const onValidateContract = async () => {
-    const res = await validateContract(contractPath)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onBuildTraceability = async () => {
-    const res = await buildTraceability({ requirements_path: traceReqPath, tests_path: traceTestsPath })
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onRecordFlaky = async () => {
-    const res = await recordFlaky(flakyTestId, flakyPassed)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onListFlaky = async () => {
-    const res = await listFlaky()
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onEvaluatePromotion = async () => {
-    let counts = {}
-    try { counts = JSON.parse(promotionCounts) } catch {}
-    const res = await evalPromotion({ from: promotionFrom, to: promotionTo, counts })
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onCompareVisual = async () => {
-    const res = await compareVisual(visualName, visualPath)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onPerfPercentiles = async () => {
-    const samples = perfSamples.split(',').map(x => parseInt(x.trim(), 10)).filter(x => !Number.isNaN(x))
-    const res = await perfPercentiles(samples)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onRunChaos = async () => {
-    const res = await runChaos(chaosScenario)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onDoctor = async () => {
-    const res = await runDoctor()
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onRefreshArtifacts = async () => {
-    const af = await listArtifacts()
-    setArtifactFiles(af.files || [])
-    if ((af.files || []).length > 0) setSelectedArtifact(af.files[0])
-    setOutput(JSON.stringify(af, null, 2))
-  }
-
-  const onReadArtifact = async () => {
-    if (!selectedArtifact) return
-    const res = await readArtifact(selectedArtifact)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onRefreshTestdata = async () => {
-    const p = await getTestdataProfiles()
-    const s = await getTestdataStatus()
-    setTestdataProfiles(p.profiles || [])
-    if (s.active_profile) setTestdataProfile(s.active_profile)
-    setOutput(JSON.stringify({ profiles: p, status: s }, null, 2))
-  }
-
-  const onSeedTestdata = async () => {
-    const res = await seedTestdata(testdataProfile)
-    setOutput(JSON.stringify(res, null, 2))
-    await onRefreshTestdata()
-  }
-
-  const onLoadTestdata = async () => {
-    const res = await loadTestdata(testdataProfile)
-    setOutput(JSON.stringify(res, null, 2))
-  }
-
-  const onGenerateTestdata = async () => {
-    const res = await generateTestdata(testdataProfile, Number(tdUsers), Number(tdOrders))
-    setOutput(JSON.stringify(res, null, 2))
-    await onRefreshTestdata()
-  }
-
-  const onResetTestdata = async () => {
-    const res = await resetTestdata()
+  const runEtlNow = async () => {
+    const res = await runEtl(etlProfile)
+    setEtlReport(res)
     setOutput(JSON.stringify(res, null, 2))
   }
 
@@ -244,222 +136,104 @@ export default function App() {
       ...prev,
       channels: {
         ...(prev.channels || {}),
-        [name]: {
-          ...((prev.channels || {})[name] || {}),
-          [key]: value,
-        },
+        [name]: { ...((prev.channels || {})[name] || {}), [key]: value },
       },
     }))
   }
 
   return (
-    <div className="container">
-      <h1>TestOps React Control Center</h1>
-      <p>One-stop testing product: channels + tools (agents) + workflows + RBAC + realtime logs + Jira/TestRail</p>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">✦ TestOps</div>
+        {TABS.map((tab) => (
+          <button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</button>
+        ))}
+      </aside>
 
-      <Card title="Auth / RBAC">
-        <input value={apiKey} onChange={(e) => setApiKeyState(e.target.value)} style={{ width: '50%' }} />
-        <button onClick={onApiKeySave}>Save API Key</button>
-        <div style={{ marginTop: 8, fontSize: 12 }}>Use: admin-token | operator-token | viewer-token</div>
-      </Card>
-
-      <div className="grid">
-        <Card title="Platform Runs">
-          <button onClick={onRunSuite}>Run Full Suite</button>
-          <button onClick={onRunAllAgents}>Run All Agents</button>
-        </Card>
-
-        <Card title="Channels">
-          <ul>{channels.map((c) => <li key={c}>{c}</li>)}</ul>
-        </Card>
-
-        <Card title="Tools (Testing Agents)">
-          <ul>
-            {agents.map((a) => (
-              <li key={a}>
-                {a} <button onClick={() => onRunAgent(a)}>Run</button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card title="Workflows (Playwright)">
-          <ul>
-            {workflows.map((w) => (
-              <li key={w}>
-                <code>{w}</code> <button onClick={() => onRunWorkflow(w)}>Run</button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
-
-      <Card title="Agent Command">
-        <input value={message} onChange={(e) => setMessage(e.target.value)} style={{ width: '70%' }} />
-        <button onClick={onSendMessage}>Send</button>
-      </Card>
-
-      <Card title="Jira Integration">
-        <div><input value={jiraSummary} onChange={(e) => setJiraSummary(e.target.value)} style={{ width: '80%' }} /></div>
-        <div style={{ marginTop: 8 }}><input value={jiraDesc} onChange={(e) => setJiraDesc(e.target.value)} style={{ width: '80%' }} /></div>
-        <button onClick={onCreateJira}>Create Jira Issue</button>
-      </Card>
-
-      <Card title="TestRail Integration">
-        <input value={trRunName} onChange={(e) => setTrRunName(e.target.value)} style={{ width: '80%' }} />
-        <button onClick={onCreateTestRail}>Create TestRail Run</button>
-      </Card>
-
-      <Card title="Generate QA Artifacts">
-        <input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} style={{ width: '80%' }} />
-        <button onClick={onGenerateArtifacts}>Generate Testcases/Testplan/Strategy</button>
-      </Card>
-
-      <Card title="Pending Activity Utilities (Doctor + Artifact Reader)">
-        <button onClick={onDoctor}>Run Doctor</button>
-        <button onClick={onRefreshArtifacts}>Refresh Artifacts</button>
-        <div style={{ marginTop: 8 }}>
-          <select value={selectedArtifact} onChange={(e) => setSelectedArtifact(e.target.value)} style={{ width: '70%' }}>
-            {(artifactFiles || []).map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-          <button onClick={onReadArtifact}>Read</button>
-        </div>
-      </Card>
-
-      <Card title="Test Data Management">
-        <button onClick={onRefreshTestdata}>Refresh Profiles/Status</button>
-        <div style={{ marginTop: 8 }}>
-          <select value={testdataProfile} onChange={(e) => setTestdataProfile(e.target.value)} style={{ width: '50%' }}>
-            {(testdataProfiles || []).map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <button onClick={onSeedTestdata}>Seed</button>
-          <button onClick={onLoadTestdata}>Load</button>
-          <button onClick={onResetTestdata}>Reset</button>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <label>users:</label>
-          <input value={tdUsers} onChange={(e) => setTdUsers(e.target.value)} style={{ width: '10%', marginLeft: 6 }} />
-          <label style={{ marginLeft: 8 }}>orders:</label>
-          <input value={tdOrders} onChange={(e) => setTdOrders(e.target.value)} style={{ width: '10%', marginLeft: 6 }} />
-          <button onClick={onGenerateTestdata}>Generate Synthetic</button>
-        </div>
-      </Card>
-
-      <Card title="Multi-tenant Channel Config">
-        <div>
-          <label>Tenant: </label>
-          <select value={tenantId} onChange={(e) => onTenantLoad(e.target.value)}>
-            {tenants.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <button onClick={onTenantSave}>Save Config</button>
-        </div>
-        <div className="grid" style={{ marginTop: 10 }}>
-          {Object.entries(tenantCfg.channels || {}).map(([name, cfg]) => (
-            <Card key={name} title={name}>
-              {Object.entries(cfg).map(([k, v]) => (
-                <div key={k} style={{ marginBottom: 6 }}>
-                  <label>{k}: </label>
-                  <input value={String(v)} onChange={(e) => updateChannelField(name, k, e.target.value)} style={{ width: '60%' }} />
-                </div>
-              ))}
-            </Card>
-          ))}
-        </div>
-      </Card>
-
-      <Card title="Wave3 Executive Dashboard">
-        <button onClick={refreshExecutive}>Refresh Executive Summary</button>
-        {execSummary?.kpi ? (
-          <div className="grid" style={{ marginTop: 10 }}>
-            <Card title="Pass Rate"><h2>{Math.round((execSummary.kpi.pass_rate || 0) * 100)}%</h2></Card>
-            <Card title="Total"><h2>{execSummary.kpi.total}</h2></Card>
-            <Card title="Fail"><h2>{execSummary.kpi.fail}</h2></Card>
-            <Card title="Error"><h2>{execSummary.kpi.error}</h2></Card>
+      <main className="main">
+        <header className="hero">
+          <div>
+            <h1>AI Testing Command Center</h1>
+            <p>Elegant, unified quality operations for functional, non-functional, security, ETL and release governance.</p>
           </div>
-        ) : <div style={{ marginTop: 8 }}>No executive summary yet. Run suite then refresh.</div>}
+          <div className="hero-actions">
+            <input value={apiKey} onChange={(e) => setApiKeyState(e.target.value)} />
+            <button onClick={onApiKeySave}>Save API Key</button>
+          </div>
+        </header>
 
-        <h4 style={{ marginTop: 14 }}>Pass-rate Trend (Score)</h4>
-        <div className="trend-row">
-          {(trendPoints || []).map((p, i) => (
-            <div key={i} className="bar-wrap" title={`${p.ts || ''} | score=${p.score}`}>
-              <div className="bar" style={{ height: `${Math.max(4, Math.min(100, p.score))}%` }} />
-            </div>
-          ))}
-        </div>
+        <section className="kpi-strip">
+          <div className="kpi"><span>Channels</span><strong>{channels.length}</strong></div>
+          <div className="kpi"><span>Agents</span><strong>{agents.length}</strong></div>
+          <div className="kpi"><span>Workflows</span><strong>{workflows.length}</strong></div>
+          <div className="kpi"><span>Pass Rate</span><strong>{Math.round((execSummary?.kpi?.pass_rate || 0) * 100)}%</strong></div>
+          <div className="kpi"><span>ETL Status</span><strong>{etlReport?.status || 'N/A'}</strong></div>
+        </section>
 
-        <h4 style={{ marginTop: 14 }}>Domain Risk Heatmap</h4>
-        <div className="grid">
-          {Object.entries(execSummary?.domains || {}).map(([d, v]) => {
-            const risk = (v.fail || 0) + (v.error || 0)
-            const cls = risk >= 3 ? 'risk-high' : risk >= 1 ? 'risk-med' : 'risk-low'
-            return (
-              <div key={d} className={`risk-card ${cls}`}>
-                <b>{d}</b>
-                <div>total={v.total} fail={v.fail} error={v.error}</div>
+        {activeTab === 'Overview' && (
+          <div className="panel-grid">
+            <Card title="Quick Run"><button onClick={onRunSuite}>Run Full Suite</button><button onClick={onRunAllAgents}>Run All Agents</button></Card>
+            <Card title="Agent Command"><input value={message} onChange={(e) => setMessage(e.target.value)} style={{ width: '70%' }} /><button onClick={onSendMessage}>Send</button></Card>
+            <Card title="Executive Trend"><div className="trend-row">{(trendPoints || []).map((p, i) => <div key={i} className="bar-wrap"><div className="bar" style={{ height: `${Math.max(4, Math.min(100, p.score))}%` }} /></div>)}</div></Card>
+            <Card title="Domain Heatmap"><div className="panel-grid">{Object.entries(execSummary?.domains || {}).map(([d, v]) => { const risk = (v.fail || 0) + (v.error || 0); const cls = risk >= 3 ? 'risk-high' : risk >= 1 ? 'risk-med' : 'risk-low'; return <div key={d} className={`risk-card ${cls}`}><b>{d}</b><div>total={v.total} fail={v.fail} error={v.error}</div></div> })}</div></Card>
+          </div>
+        )}
+
+        {activeTab === 'Runs' && (
+          <div className="panel-grid">
+            <Card title="Agents">{agents.map((a) => <div key={a}>{a} <button onClick={() => onRunAgent(a)}>Run</button></div>)}</Card>
+            <Card title="Workflows">{workflows.map((w) => <div key={w}><code>{w}</code> <button onClick={() => onRunWorkflow(w)}>Run</button></div>)}</Card>
+            <Card title="Doctor & Artifacts">
+              <button onClick={async () => setOutput(JSON.stringify(await runDoctor(), null, 2))}>Run Doctor</button>
+              <button onClick={async () => { const af = await listArtifacts(); setArtifactFiles(af.files || []); setOutput(JSON.stringify(af, null, 2)) }}>Refresh Artifacts</button>
+              <div><select value={selectedArtifact} onChange={(e) => setSelectedArtifact(e.target.value)}>{artifactFiles.map((f) => <option key={f}>{f}</option>)}</select><button onClick={async () => setOutput(JSON.stringify(await readArtifact(selectedArtifact), null, 2))}>Read</button></div>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'Data & ETL' && (
+          <div className="panel-grid">
+            <Card title="ETL Validation Module">
+              <div><select value={etlProfile} onChange={(e) => setEtlProfile(e.target.value)}>{etlProfiles.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={runEtlNow}>Run ETL Checks</button></div>
+              <div className="etl-summary">
+                <span>Status: <b>{etlReport?.status || 'N/A'}</b></span>
+                <span>Checks: <b>{etlReport?.summary?.total_checks || 0}</b></span>
+                <span>Pass: <b>{etlReport?.summary?.pass || 0}</b></span>
+                <span>Fail: <b>{etlReport?.summary?.fail || 0}</b></span>
               </div>
-            )
-          })}
-        </div>
+            </Card>
+            <Card title="Test Data Management">
+              <select value={testdataProfile} onChange={(e) => setTestdataProfile(e.target.value)}>{testdataProfiles.map((p) => <option key={p}>{p}</option>)}</select>
+              <button onClick={async () => setOutput(JSON.stringify(await seedTestdata(testdataProfile), null, 2))}>Seed</button>
+              <button onClick={async () => setOutput(JSON.stringify(await loadTestdata(testdataProfile), null, 2))}>Load</button>
+              <button onClick={async () => setOutput(JSON.stringify(await resetTestdata(), null, 2))}>Reset</button>
+              <div><input value={tdUsers} onChange={(e) => setTdUsers(e.target.value)} /><input value={tdOrders} onChange={(e) => setTdOrders(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await generateTestdata(testdataProfile, Number(tdUsers), Number(tdOrders)), null, 2))}>Generate</button></div>
+              <button onClick={async () => setOutput(JSON.stringify({ profiles: await getTestdataProfiles(), status: await getTestdataStatus() }, null, 2))}>Refresh Status</button>
+            </Card>
+          </div>
+        )}
 
-        <h4>HITL Queue</h4>
-        <ul>
-          {(hitlQueue || []).slice(-20).reverse().map((c) => (
-            <li key={c.id}>
-              <code>{c.id}</code> | {c.title} | status={c.status}
-              {c.status !== 'APPROVED' && <button onClick={() => approveCheckpoint(c.id)}>Approve</button>}
-            </li>
-          ))}
-        </ul>
-      </Card>
+        {activeTab === 'Integrations' && <div className="panel-grid">
+          <Card title="Jira"><input value={jiraSummary} onChange={(e) => setJiraSummary(e.target.value)} /><input value={jiraDesc} onChange={(e) => setJiraDesc(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await createJiraIssue({ summary: jiraSummary, description: jiraDesc, issue_type: 'Task' }), null, 2))}>Create Jira Issue</button></Card>
+          <Card title="TestRail"><input value={trRunName} onChange={(e) => setTrRunName(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await createTestRailRun({ name: trRunName }), null, 2))}>Create TestRail Run</button></Card>
+          <Card title="QA Artifacts"><input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await generateArtifacts({ product_name: artifactProduct }), null, 2))}>Generate</button></Card>
+        </div>}
 
-      <Card title="Wave3.1 Testing Hardening">
-        <h4>Contract Validation</h4>
-        <input value={contractPath} onChange={(e) => setContractPath(e.target.value)} style={{ width: '80%' }} />
-        <button onClick={onValidateContract}>Validate Contract</button>
+        {activeTab === 'Governance' && <div className="panel-grid">
+          <Card title="HITL Queue">{(hitlQueue || []).slice(-20).reverse().map((c) => <div key={c.id}><code>{c.id}</code> {c.title} {c.status !== 'APPROVED' && <button onClick={async () => { setOutput(JSON.stringify(await approveWave3Checkpoint(c.id, 'ui-approver'), null, 2)); refreshExecutive() }}>Approve</button>}</div>)}</Card>
+          <Card title="Contract + Traceability"><input value={contractPath} onChange={(e) => setContractPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await validateContract(contractPath), null, 2))}>Validate Contract</button><input value={traceReqPath} onChange={(e) => setTraceReqPath(e.target.value)} /><input value={traceTestsPath} onChange={(e) => setTraceTestsPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await buildTraceability({ requirements_path: traceReqPath, tests_path: traceTestsPath }), null, 2))}>Build Traceability</button></Card>
+        </div>}
 
-        <h4 style={{ marginTop: 12 }}>Traceability Matrix</h4>
-        <div><input value={traceReqPath} onChange={(e) => setTraceReqPath(e.target.value)} style={{ width: '80%' }} /></div>
-        <div style={{ marginTop: 8 }}><input value={traceTestsPath} onChange={(e) => setTraceTestsPath(e.target.value)} style={{ width: '80%' }} /></div>
-        <button onClick={onBuildTraceability}>Build Traceability</button>
-      </Card>
+        {activeTab === 'Advanced' && <div className="panel-grid">
+          <Card title="Flaky"><input value={flakyTestId} onChange={(e) => setFlakyTestId(e.target.value)} /><label>passed<input type="checkbox" checked={flakyPassed} onChange={(e) => setFlakyPassed(e.target.checked)} /></label><button onClick={async () => setOutput(JSON.stringify(await recordFlaky(flakyTestId, flakyPassed), null, 2))}>Record</button><button onClick={async () => setOutput(JSON.stringify(await listFlaky(), null, 2))}>List</button></Card>
+          <Card title="Promotion"><input value={promotionFrom} onChange={(e) => setPromotionFrom(e.target.value)} /><input value={promotionTo} onChange={(e) => setPromotionTo(e.target.value)} /><input value={promotionCounts} onChange={(e) => setPromotionCounts(e.target.value)} /><button onClick={async () => { let counts = {}; try { counts = JSON.parse(promotionCounts) } catch {}; setOutput(JSON.stringify(await evalPromotion({ from: promotionFrom, to: promotionTo, counts }), null, 2)) }}>Evaluate</button></Card>
+          <Card title="Visual + Perf + Chaos"><input value={visualName} onChange={(e) => setVisualName(e.target.value)} /><input value={visualPath} onChange={(e) => setVisualPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await compareVisual(visualName, visualPath), null, 2))}>Compare Visual</button><input value={perfSamples} onChange={(e) => setPerfSamples(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await perfPercentiles(perfSamples.split(',').map(x => parseInt(x.trim(), 10)).filter(x => !Number.isNaN(x))), null, 2))}>P50/P95/P99</button><input value={chaosScenario} onChange={(e) => setChaosScenario(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await runChaos(chaosScenario), null, 2))}>Run Chaos</button></Card>
+        </div>}
 
-      <Card title="Wave3.2 Advanced Quality Modules">
-        <h4>Flaky Governance</h4>
-        <input value={flakyTestId} onChange={(e) => setFlakyTestId(e.target.value)} style={{ width: '40%' }} />
-        <label style={{ marginLeft: 8 }}>
-          passed
-          <input type="checkbox" checked={flakyPassed} onChange={(e) => setFlakyPassed(e.target.checked)} style={{ marginLeft: 6 }} />
-        </label>
-        <button onClick={onRecordFlaky}>Record</button>
-        <button onClick={onListFlaky}>List Quarantined</button>
+        {activeTab === 'Tenants' && <Card title="Multi-tenant Channel Config"><div><select value={tenantId} onChange={(e) => onTenantLoad(e.target.value)}>{tenants.map((t) => <option key={t}>{t}</option>)}</select><button onClick={onTenantSave}>Save Config</button></div><div className="panel-grid">{Object.entries(tenantCfg.channels || {}).map(([name, cfg]) => <Card key={name} title={name}>{Object.entries(cfg).map(([k, v]) => <div key={k}><label>{k}</label><input value={String(v)} onChange={(e) => updateChannelField(name, k, e.target.value)} /></div>)}</Card>)}</div></Card>}
 
-        <h4 style={{ marginTop: 12 }}>Promotion Gate</h4>
-        <input value={promotionFrom} onChange={(e) => setPromotionFrom(e.target.value)} style={{ width: '10%' }} />
-        <input value={promotionTo} onChange={(e) => setPromotionTo(e.target.value)} style={{ width: '10%', marginLeft: 8 }} />
-        <input value={promotionCounts} onChange={(e) => setPromotionCounts(e.target.value)} style={{ width: '50%', marginLeft: 8 }} />
-        <button onClick={onEvaluatePromotion}>Evaluate</button>
-
-        <h4 style={{ marginTop: 12 }}>Visual Regression</h4>
-        <input value={visualName} onChange={(e) => setVisualName(e.target.value)} style={{ width: '20%' }} />
-        <input value={visualPath} onChange={(e) => setVisualPath(e.target.value)} style={{ width: '55%', marginLeft: 8 }} />
-        <button onClick={onCompareVisual}>Compare</button>
-
-        <h4 style={{ marginTop: 12 }}>Performance Percentiles</h4>
-        <input value={perfSamples} onChange={(e) => setPerfSamples(e.target.value)} style={{ width: '70%' }} />
-        <button onClick={onPerfPercentiles}>Compute P50/P95/P99</button>
-
-        <h4 style={{ marginTop: 12 }}>Chaos Simulation</h4>
-        <input value={chaosScenario} onChange={(e) => setChaosScenario(e.target.value)} style={{ width: '35%' }} />
-        <button onClick={onRunChaos}>Run Chaos</button>
-      </Card>
-
-      <Card title="Realtime Logs (WebSocket)">
-        <pre>{JSON.stringify(logs.slice(-20), null, 2)}</pre>
-      </Card>
-
-      <Card title="Output">
-        <pre>{output}</pre>
-      </Card>
+        {activeTab === 'Logs' && <div className="panel-grid"><Card title="Realtime Logs"><pre>{JSON.stringify(logs.slice(-25), null, 2)}</pre></Card><Card title="Output"><pre>{output}</pre></Card></div>}
+      </main>
     </div>
   )
 }
