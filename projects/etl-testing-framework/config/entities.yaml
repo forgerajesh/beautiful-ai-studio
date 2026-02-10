@@ -1,0 +1,4 @@
+entity:
+  source_orders: source_orders
+  target_orders: target_orders
+  customer_hist: dim_customer_hist

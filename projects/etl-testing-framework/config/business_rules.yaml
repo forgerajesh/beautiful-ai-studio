@@ -1,0 +1,10 @@
+rule:
+  amount_positive: "amount <= 0"
+  one_current_record_per_customer: |
+    customer_id in (
+      select customer_id
+      from {{entity.customer_hist}}
+      where is_current = 1
+      group by customer_id
+      having count(*) > 1
+    )

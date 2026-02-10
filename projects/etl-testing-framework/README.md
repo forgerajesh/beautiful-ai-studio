@@ -205,3 +205,14 @@ New outputs:
 - `reports/cio_summary.txt`
 
 - `reports/case_history.json` (per-test pass/fail history for exact flaky detection)
+
+## Decoupled table names and business rules
+Framework now supports placeholder-based indirection so test logic is not hardcoded to physical tables.
+
+- Table/entity mappings: `config/entities.yaml`
+- Reusable business rules: `config/business_rules.yaml`
+- Test suite uses placeholders in `config/tests.yaml`, e.g.:
+  - `{{entity.target_orders}}`
+  - `{{rule.amount_positive}}`
+
+This allows environment/schema renames without rewriting test SQL.
