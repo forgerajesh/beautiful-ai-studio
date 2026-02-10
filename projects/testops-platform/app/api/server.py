@@ -28,6 +28,9 @@ from app.v3.remediation.governance import propose_remediation, apply_remediation
 from app.v31.queue.backend import queue_backend_status
 from app.v31.observability.exporters import prometheus_text
 from app.v31.governance.audit import log_approval, list_audit
+from app.integrations.jira import create_jira_issue
+from app.integrations.testrail import create_test_run
+from app.integrations.artifacts import generate_testcases, generate_testplan, generate_teststrategy
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -315,3 +318,31 @@ def v31_remediation_apply(payload: dict, role: str = Depends(get_role)):
 def v31_audit(limit: int = 100, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return {"events": list_audit(limit=limit)}
+
+
+@app.post("/integrations/jira/create-issue")
+def integrations_jira_create_issue(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return create_jira_issue(
+        summary=str(payload.get("summary", "TestOps issue")),
+        description=str(payload.get("description", "Generated from TestOps")),
+        issue_type=str(payload.get("issue_type", "Task")),
+    )
+
+
+@app.post("/integrations/testrail/create-run")
+def integrations_testrail_create_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    case_ids = payload.get("case_ids")
+    return create_test_run(name=str(payload.get("name", "TestOps Automated Run")), case_ids=case_ids)
+
+
+@app.post("/artifacts/generate")
+def integrations_generate_artifacts(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    product_name = str(payload.get("product_name", "TestOps Platform"))
+    out_dir = str(payload.get("out_dir", "artifacts"))
+    tc = generate_testcases(product_name, out_dir)
+    tp = generate_testplan(product_name, out_dir)
+    ts = generate_teststrategy(product_name, out_dir)
+    return {"ok": True, "files": {"testcases": tc, "testplan": tp, "teststrategy": ts}}

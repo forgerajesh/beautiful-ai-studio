@@ -99,6 +99,21 @@ Artifacts:
 - benchmark history: `reports/v3-benchmarks.json`
 - approval audit: `reports/v31-approval-audit.json`
 
+## Jira + TestRail + QA artifacts
+Endpoints:
+- `POST /integrations/jira/create-issue`
+- `POST /integrations/testrail/create-run`
+- `POST /artifacts/generate` (generates testcases/testplan/teststrategy)
+
+Environment variables:
+- Jira: `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`
+- TestRail: `TESTRAIL_BASE_URL`, `TESTRAIL_USER_EMAIL`, `TESTRAIL_API_KEY`, `TESTRAIL_PROJECT_ID`, `TESTRAIL_SUITE_ID` (optional)
+
+Generated files:
+- `artifacts/TESTCASES.md`
+- `artifacts/TESTPLAN.md`
+- `artifacts/TESTSTRATEGY.md`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)
