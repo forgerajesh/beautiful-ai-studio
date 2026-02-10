@@ -175,6 +175,21 @@ Wave3.1 files:
 - `requirements/requirements.json`
 - `reports/traceability-matrix.json`
 
+## Wave3.2 advanced quality modules
+- Flaky governance + quarantine registry
+- Environment promotion gate evaluator
+- Visual regression baseline/compare
+- Performance percentile calculator (P50/P95/P99)
+- Chaos simulation scenarios
+
+Wave3.2 endpoints:
+- `POST /wave3.2/flaky/record`
+- `GET /wave3.2/flaky/list`
+- `POST /wave3.2/promotion/evaluate`
+- `POST /wave3.2/visual/compare`
+- `POST /wave3.2/performance/percentiles`
+- `POST /wave3.2/chaos/run`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

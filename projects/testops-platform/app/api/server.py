@@ -45,6 +45,11 @@ from app.wave3.analytics.executive import build_executive_summary
 from app.wave3.analytics.trends import load_benchmark_trends
 from app.wave31.contract.validator import validate_contract
 from app.wave31.traceability.matrix import build_traceability
+from app.wave32.flaky.governance import record_test_result, list_flaky
+from app.wave32.promotion.gates import evaluate_promotion
+from app.wave32.visual.regression import compare_snapshot
+from app.wave32.performance.percentiles import compute_percentiles
+from app.wave32.chaos.scenarios import run_chaos_scenario
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -510,3 +515,45 @@ def wave31_traceability_build(payload: dict, role: str = Depends(get_role)):
     requirements_path = str(payload.get('requirements_path', 'requirements/requirements.json'))
     tests_path = str(payload.get('tests_path', 'artifacts/TESTCASES.md'))
     return build_traceability(requirements_path=requirements_path, tests_path=tests_path)
+
+
+@app.post('/wave3.2/flaky/record')
+def wave32_flaky_record(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return record_test_result(str(payload.get('test_id', 'unknown')), bool(payload.get('passed', True)))
+
+
+@app.get('/wave3.2/flaky/list')
+def wave32_flaky_list(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"flaky": list_flaky()}
+
+
+@app.post('/wave3.2/promotion/evaluate')
+def wave32_promotion_evaluate(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return evaluate_promotion(
+        env_from=str(payload.get('from', 'qa')),
+        env_to=str(payload.get('to', 'uat')),
+        counts=payload.get('counts') or {},
+        policy=payload.get('policy'),
+    )
+
+
+@app.post('/wave3.2/visual/compare')
+def wave32_visual_compare(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return compare_snapshot(str(payload.get('name', 'default')), str(payload.get('current_path', 'reports/screenshot.png')))
+
+
+@app.post('/wave3.2/performance/percentiles')
+def wave32_perf_percentiles(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    samples = payload.get('samples_ms') or []
+    return compute_percentiles([int(x) for x in samples])
+
+
+@app.post('/wave3.2/chaos/run')
+def wave32_chaos_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_chaos_scenario(str(payload.get('scenario', 'latency-spike')))
