@@ -3,10 +3,12 @@ import json
 import subprocess
 from pathlib import Path
 from datetime import datetime, UTC
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
 HISTORY = REPORTS / "history.json"
+CASE_HISTORY = REPORTS / "case_history.json"
 
 
 def run_cmd(cmd, env=None):
@@ -42,18 +44,18 @@ def parse_test_counts(out: str) -> dict:
     return {"total": total, "passed": passed, "failed": failed, "errors": errors}
 
 
-def load_history() -> list:
-    if HISTORY.exists():
+def load_json(path: Path, default):
+    if path.exists():
         try:
-            return json.loads(HISTORY.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
-            return []
-    return []
+            return default
+    return default
 
 
-def save_history(items: list):
-    REPORTS.mkdir(exist_ok=True)
-    HISTORY.write_text(json.dumps(items[-100:], indent=2), encoding="utf-8")
+def save_json(path: Path, data):
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def sparkline(values):
@@ -66,24 +68,48 @@ def sparkline(values):
     return "".join(ticks[int((v - lo) / (hi - lo) * (len(ticks) - 1))] for v in values)
 
 
-def detect_flaky_checks(history: list, top_n=5):
-    # Placeholder heuristic: most recent failed IDs from ai_remediation mentions
-    # (can be replaced by junit parser later)
-    ai = (REPORTS / "ai_remediation.md")
-    if not ai.exists():
+def parse_junit_cases(junit_path: Path):
+    if not junit_path.exists():
         return []
-    txt = ai.read_text(encoding="utf-8", errors="ignore")
-    ids = []
-    for line in txt.splitlines():
-        if "[" in line and "]" in line:
-            token = line.split("[")[-1].split("]")[0].strip()
-            if token and " " not in token and len(token) < 80:
-                ids.append(token)
-    freq = {}
-    for i in ids:
-        freq[i] = freq.get(i, 0) + 1
-    ranked = sorted(freq.items(), key=lambda x: x[1], reverse=True)[:top_n]
-    return ranked
+    try:
+        root = ET.parse(junit_path).getroot()
+    except Exception:
+        return []
+
+    cases = []
+    for tc in root.iter("testcase"):
+        name = tc.attrib.get("name", "unknown")
+        cls = tc.attrib.get("classname", "")
+        case_id = f"{cls}::{name}" if cls else name
+        failed = tc.find("failure") is not None or tc.find("error") is not None
+        cases.append({"id": case_id, "failed": failed})
+    return cases
+
+
+def update_case_history(junit_path: Path):
+    hist = load_json(CASE_HISTORY, {})
+    cases = parse_junit_cases(junit_path)
+    for c in cases:
+        arr = hist.get(c["id"], [])
+        arr.append(1 if c["failed"] else 0)
+        hist[c["id"]] = arr[-20:]  # last 20 runs
+    save_json(CASE_HISTORY, hist)
+    return hist
+
+
+def exact_flaky_checks(top_n=5):
+    hist = load_json(CASE_HISTORY, {})
+    scores = []
+    for cid, arr in hist.items():
+        if len(arr) < 4:
+            continue
+        fail_rate = sum(arr) / len(arr)
+        transitions = sum(1 for i in range(1, len(arr)) if arr[i] != arr[i-1])
+        # flaky signature: medium fail rate + high transitions
+        score = (1 - abs(fail_rate - 0.5)) * 0.6 + (transitions / (len(arr)-1)) * 0.4
+        scores.append((cid, round(fail_rate, 2), transitions, round(score, 3)))
+    scores.sort(key=lambda x: x[3], reverse=True)
+    return scores[:top_n]
 
 
 def build_exec_report(test_res, ai_notes, email_mode, brand="ETLQ"):
@@ -94,7 +120,7 @@ def build_exec_report(test_res, ai_notes, email_mode, brand="ETLQ"):
     merged = (test_res.get("stdout", "") + "\n" + test_res.get("stderr", ""))
     counts = parse_test_counts(merged)
 
-    history = load_history()
+    history = load_json(HISTORY, [])
     now = datetime.now(UTC).isoformat()
     current = {
         "ts": now,
@@ -105,18 +131,24 @@ def build_exec_report(test_res, ai_notes, email_mode, brand="ETLQ"):
     }
     prev = history[-1] if history else None
     history.append(current)
-    save_history(history)
+    save_json(HISTORY, history[-100:])
+
+    junit_path = REPORTS / "junit.xml"
+    update_case_history(junit_path)
+    flaky = exact_flaky_checks(top_n=5)
 
     last7 = history[-7:]
     trend_values = [x.get("failed", 0) for x in last7]
     trend = sparkline(trend_values)
 
     delta_failed = None if not prev else current["failed"] - prev.get("failed", 0)
-    flaky = detect_flaky_checks(history)
 
     out = REPORTS / "executive_report.html"
 
-    flaky_html = "".join([f"<li><code>{k}</code> — {v} mentions</li>" for k, v in flaky]) or "<li>No flaky signals yet</li>"
+    flaky_html = "".join([
+        f"<li><code>{cid}</code> — fail_rate={fr}, transitions={tr}, score={sc}</li>"
+        for cid, fr, tr, sc in flaky
+    ]) or "<li>No sufficient history yet (need >=4 runs per test)</li>"
 
     html = f"""
     <html><head><title>{brand} Executive Report</title>
@@ -153,7 +185,7 @@ def build_exec_report(test_res, ai_notes, email_mode, brand="ETLQ"):
     </div>
 
     <div class='card'>
-      <h3>Top 5 flaky checks (heuristic)</h3>
+      <h3>Top 5 flaky checks (exact from JUnit history)</h3>
       <ul>{flaky_html}</ul>
     </div>
 
@@ -184,7 +216,6 @@ def export_pdf_from_html(html_path: str) -> str | None:
 
 
 def send_cio_summary(brand: str, summary: dict) -> dict:
-    # send short CIO-oriented email using existing SMTP env
     content = f"""{brand} - One Page Data Quality Summary
 
 Status: {summary['status']}
@@ -200,7 +231,6 @@ Action:
 """
     tmp = REPORTS / "cio_summary.txt"
     tmp.write_text(content, encoding="utf-8")
-    # piggyback existing mail script by appending this file as ai notes replacement if needed
     return {"ok": True, "path": str(tmp)}
 
 

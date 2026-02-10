@@ -203,3 +203,5 @@ New outputs:
 - `reports/executive_report.html`
 - `reports/executive_report.pdf` (best effort)
 - `reports/cio_summary.txt`
+
+- `reports/case_history.json` (per-test pass/fail history for exact flaky detection)
