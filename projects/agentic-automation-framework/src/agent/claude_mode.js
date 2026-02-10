@@ -4,6 +4,7 @@ import { generateWorkflow, saveWorkflow } from "./planner.js";
 import { executeWorkflowFile } from "./engine.js";
 import { appendHistory, buildDashboard } from "./history.js";
 import { relevantFailureContext, recordFailure } from "./memory.js";
+import { retrieveRelevantSemantic, rememberFailureSemantic } from "./semantic_memory.js";
 
 function persistRun(result) {
   appendHistory({
@@ -27,7 +28,12 @@ export async function runClaudeLikeAgent({
 
   const trace = [];
   let lastResult = null;
-  const recentFailures = relevantFailureContext(goal, 5);
+  const useSemantic = (process.env.MEMORY_MODE || "hybrid").toLowerCase() !== "lexical";
+  let recentFailures = relevantFailureContext(goal, 5);
+  if (useSemantic) {
+    const sem = await retrieveRelevantSemantic(goal, 5);
+    if (sem.length) recentFailures = sem;
+  }
 
   for (let i = 1; i <= maxIterations; i++) {
     const memoryBlock = recentFailures.length
@@ -51,7 +57,11 @@ export async function runClaudeLikeAgent({
     lastResult = result;
 
     if (!result.ok) {
-      recordFailure({ goal, error: result.error || "unknown", workflowFile: file, iteration: i });
+      const failItem = { goal, error: result.error || "unknown", workflowFile: file, iteration: i, ts: new Date().toISOString() };
+      recordFailure(failItem);
+      if (useSemantic) {
+        await rememberFailureSemantic(failItem);
+      }
     }
 
     if (result.ok) {

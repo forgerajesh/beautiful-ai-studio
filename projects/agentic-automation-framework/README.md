@@ -3,7 +3,7 @@
 A practical agentic automation framework using **Playwright** with:
 - **Natural-language → workflow generation**
 - **Claude-like goal mode** (plan → execute → retry with self-correction)
-- **Failure memory-aware planning** (uses recent failures as context)
+- **Failure memory-aware planning** (lexical + optional semantic embedding retrieval)
 - **Run history dashboard**
 - **Retry queue + concurrency control**
 - Telegram + WhatsApp notifications
@@ -63,6 +63,8 @@ npx playwright install chromium
 - `TELEGRAM_ALLOWED_USER_IDS` (optional access control)
 - `RUN_CONCURRENCY`, `RUN_RETRIES`
 - `AGENT_MAX_ITERATIONS`
+- `MEMORY_MODE=hybrid|lexical`
+- `OPENAI_EMBED_MODEL` (optional semantic memory retrieval)
 
 ---
 
