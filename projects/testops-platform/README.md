@@ -47,6 +47,20 @@ Outputs:
 uvicorn app.api.server:app --host 0.0.0.0 --port 8090
 ```
 
+## React UI (new)
+```bash
+cd ui-react
+npm install
+npm run dev
+```
+Open `http://localhost:5174`
+
+This React control center integrates:
+- channels discovery
+- tools/agents execution
+- Playwright workflow listing + run
+- agent command messaging
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

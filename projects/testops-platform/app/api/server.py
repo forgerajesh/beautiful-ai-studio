@@ -1,33 +1,22 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
-from typing import Optional
 from pathlib import Path
 import json
+import os
+import subprocess
+import sys
 
 from app.core.config import load_config
 from app.core.orchestrator import run_product_suite
 from app.agent.service import AgentService
 from app.channels.base import ChannelMessage
 from app.channels.registry import ChannelRegistry
+from app.api.schemas import AgentMessageRequest, RunAgentRequest, RunWorkflowRequest
+from app.api.workflows import list_workflows
 
-app = FastAPI(title="TestOps Platform API", version="1.2.0")
+app = FastAPI(title="TestOps Platform API", version="1.3.0")
 templates = Jinja2Templates(directory="app/ui/templates")
-
-
-class AgentMessageRequest(BaseModel):
-    channel: str
-    user_id: str = "anonymous"
-    chat_id: str = ""
-    text: str
-    raw: dict = {}
-    config_path: str = "config/product.yaml"
-
-
-class RunAgentRequest(BaseModel):
-    config_path: str = "config/product.yaml"
-    agent: Optional[str] = None
 
 
 @app.get("/health")
@@ -60,6 +49,33 @@ def channels(config_path: str = "config/product.yaml"):
     cfg = load_config(config_path)
     reg = ChannelRegistry(cfg)
     return {"supported": reg.SUPPORTED_CHANNELS}
+
+
+@app.get("/agents")
+def agents(config_path: str = "config/product.yaml"):
+    a = AgentService(config_path)
+    return {"agents": a.registry.list()}
+
+
+@app.get("/workflows")
+def workflows():
+    return {"workflows": list_workflows()}
+
+
+@app.post("/workflows/run")
+def run_workflow(req: RunWorkflowRequest):
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(Path("../agentic-automation-framework-python").resolve())
+    cmd = [sys.executable, "../agentic-automation-framework-python/main.py", "--workflow", req.workflow_path]
+    if req.notify:
+        cmd.append("--notify")
+    p = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    return {
+        "ok": p.returncode == 0,
+        "returncode": p.returncode,
+        "stdout_tail": p.stdout[-1200:],
+        "stderr_tail": p.stderr[-1200:],
+    }
 
 
 @app.post("/run")
@@ -102,8 +118,6 @@ def agent_message(req: AgentMessageRequest):
 
 @app.post("/webhook/{channel}")
 def webhook(channel: str, payload: dict):
-    # Generic webhook ingress for non-telegram channels.
-    # Map provider payload to internal message envelope.
     text = str(payload.get("text") or payload.get("message") or "").strip()
     user_id = str(payload.get("user_id") or payload.get("from") or "unknown")
     chat_id = str(payload.get("chat_id") or payload.get("conversation_id") or user_id)
