@@ -8,6 +8,7 @@ import {
   validateContract, buildTraceability,
   recordFlaky, listFlaky, evalPromotion, compareVisual, perfPercentiles, runChaos,
   listArtifacts, readArtifact, runDoctor,
+  getTestdataProfiles, seedTestdata, loadTestdata, generateTestdata, resetTestdata, getTestdataStatus,
 } from './api'
 
 export default function App() {
@@ -42,6 +43,10 @@ export default function App() {
   const [chaosScenario, setChaosScenario] = useState('latency-spike')
   const [artifactFiles, setArtifactFiles] = useState([])
   const [selectedArtifact, setSelectedArtifact] = useState('')
+  const [testdataProfiles, setTestdataProfiles] = useState([])
+  const [testdataProfile, setTestdataProfile] = useState('default')
+  const [tdUsers, setTdUsers] = useState(10)
+  const [tdOrders, setTdOrders] = useState(20)
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -58,6 +63,7 @@ export default function App() {
       const tr = await getWave3Trends()
       const cp = await listWave3Checkpoints()
       const af = await listArtifacts()
+      const tdp = await getTestdataProfiles()
       setChannels(c.supported || [])
       setAgents(a.agents || [])
       setWorkflows(w.workflows || [])
@@ -66,6 +72,8 @@ export default function App() {
       setHitlQueue(cp.checkpoints || [])
       setArtifactFiles(af.files || [])
       setSelectedArtifact((af.files || [])[0] || '')
+      setTestdataProfiles(tdp.profiles || [])
+      setTestdataProfile((tdp.profiles || [])[0] || 'default')
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -201,6 +209,36 @@ export default function App() {
     setOutput(JSON.stringify(res, null, 2))
   }
 
+  const onRefreshTestdata = async () => {
+    const p = await getTestdataProfiles()
+    const s = await getTestdataStatus()
+    setTestdataProfiles(p.profiles || [])
+    if (s.active_profile) setTestdataProfile(s.active_profile)
+    setOutput(JSON.stringify({ profiles: p, status: s }, null, 2))
+  }
+
+  const onSeedTestdata = async () => {
+    const res = await seedTestdata(testdataProfile)
+    setOutput(JSON.stringify(res, null, 2))
+    await onRefreshTestdata()
+  }
+
+  const onLoadTestdata = async () => {
+    const res = await loadTestdata(testdataProfile)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onGenerateTestdata = async () => {
+    const res = await generateTestdata(testdataProfile, Number(tdUsers), Number(tdOrders))
+    setOutput(JSON.stringify(res, null, 2))
+    await onRefreshTestdata()
+  }
+
+  const onResetTestdata = async () => {
+    const res = await resetTestdata()
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
   const updateChannelField = (name, key, value) => {
     setTenantCfg((prev) => ({
       ...prev,
@@ -285,6 +323,25 @@ export default function App() {
             {(artifactFiles || []).map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
           <button onClick={onReadArtifact}>Read</button>
+        </div>
+      </Card>
+
+      <Card title="Test Data Management">
+        <button onClick={onRefreshTestdata}>Refresh Profiles/Status</button>
+        <div style={{ marginTop: 8 }}>
+          <select value={testdataProfile} onChange={(e) => setTestdataProfile(e.target.value)} style={{ width: '50%' }}>
+            {(testdataProfiles || []).map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <button onClick={onSeedTestdata}>Seed</button>
+          <button onClick={onLoadTestdata}>Load</button>
+          <button onClick={onResetTestdata}>Reset</button>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <label>users:</label>
+          <input value={tdUsers} onChange={(e) => setTdUsers(e.target.value)} style={{ width: '10%', marginLeft: 6 }} />
+          <label style={{ marginLeft: 8 }}>orders:</label>
+          <input value={tdOrders} onChange={(e) => setTdOrders(e.target.value)} style={{ width: '10%', marginLeft: 6 }} />
+          <button onClick={onGenerateTestdata}>Generate Synthetic</button>
         </div>
       </Card>
 

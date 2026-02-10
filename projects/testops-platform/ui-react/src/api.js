@@ -90,3 +90,19 @@ export const runChaos = (scenario) => api('/wave3.2/chaos/run', {
   method: 'POST',
   body: JSON.stringify({ scenario }),
 })
+
+export const getTestdataProfiles = () => api('/testdata/profiles')
+export const seedTestdata = (profile) => api('/testdata/seed', {
+  method: 'POST',
+  body: JSON.stringify({ profile }),
+})
+export const loadTestdata = (profile) => api('/testdata/load', {
+  method: 'POST',
+  body: JSON.stringify({ profile }),
+})
+export const generateTestdata = (profile, users, orders) => api('/testdata/generate', {
+  method: 'POST',
+  body: JSON.stringify({ profile, users, orders }),
+})
+export const resetTestdata = () => api('/testdata/reset', { method: 'POST' })
+export const getTestdataStatus = () => api('/testdata/status')
