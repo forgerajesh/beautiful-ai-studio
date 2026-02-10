@@ -122,3 +122,21 @@ Generated tests are now auto-ranked (`critical`/`high`) using:
 
 Tune ranking by editing:
 - `config/table_tiers.yaml`
+
+## MCP server
+This project includes an MCP server to expose ETL testing operations as tools.
+
+### Start server
+```bash
+cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m mcp_server.server
+```
+
+### Exposed MCP tools
+- `health`
+- `run_etl_tests(mark_expr?)`
+- `generate_tests_from_metadata()`
+- `run_ai_agent(request)`
+- `show_suite_config()`
