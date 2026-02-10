@@ -1,0 +1,57 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    env_file: .env.example
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_RESULT_BACKEND=redis://redis:6379/1
+    command: uvicorn app.api.server:app --host 0.0.0.0 --port 8090
+    ports: ["8090:8090"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+
+  worker:
+    build: .
+    env_file: .env.example
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_RESULT_BACKEND=redis://redis:6379/1
+    command: celery -A app.wave1.queue.celery_app.celery_app worker --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "from app.wave1.queue.celery_app import celery_app; print(celery_app.main)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  ui:
+    build: ./ui-react
+    ports: ["5174:5174"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5174"]
+      interval: 20s
+      timeout: 5s
+      retries: 8

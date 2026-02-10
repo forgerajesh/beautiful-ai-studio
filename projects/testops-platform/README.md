@@ -28,9 +28,15 @@ main.py            # CLI runner
 ## Setup
 ```bash
 cd /home/vnc/.openclaw/workspace/projects/testops-platform
+make bootstrap
+```
+
+Or manually:
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cd ui-react && npm install
 ```
 
 ## Run product suite
@@ -44,7 +50,17 @@ Outputs:
 
 ## Run API
 ```bash
-uvicorn app.api.server:app --host 0.0.0.0 --port 8090
+make api
+```
+
+## Run worker
+```bash
+make worker
+```
+
+## Run full local stack (Docker)
+```bash
+make stack
 ```
 
 ## React UI (new)
@@ -242,3 +258,29 @@ python main.py --config config/product.yaml --telegram-listen
 - distributed load profiles
 - flaky test quarantine + trend analytics
 - policy gates by environment and risk profile
+
+## ETL Testing Module
+The platform now includes a profile-driven ETL validation engine under `app/etl`.
+
+Config + sample data:
+- `etl/profiles.yaml`
+- `etl/source_orders.csv`
+- `etl/target_orders.csv`
+
+ETL API endpoints:
+- `GET /etl/profiles`
+- `POST /etl/run`
+- `GET /etl/last-report`
+
+Generated report:
+- `reports/etl-report.json`
+
+## Product scripts
+- `make bootstrap`
+- `make api`
+- `make worker`
+- `make ui`
+- `make stack`
+- `make test`
+
+Deployment details: `docs/DEPLOYMENT.md`

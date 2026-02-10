@@ -53,6 +53,7 @@ from app.wave32.promotion.gates import evaluate_promotion
 from app.wave32.visual.regression import compare_snapshot
 from app.wave32.performance.percentiles import compute_percentiles
 from app.wave32.chaos.scenarios import run_chaos_scenario
+from app.etl.engine import run_etl_profile, list_profiles as list_etl_profiles, load_last_report as load_last_etl_report
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -60,7 +61,9 @@ templates = Jinja2Templates(directory="app/ui/templates")
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    etl_cfg_ok = Path("etl/profiles.yaml").exists()
+    etl_data_ok = Path("etl/source_orders.csv").exists() and Path("etl/target_orders.csv").exists()
+    return {"ok": True, "etl_ready": etl_cfg_ok and etl_data_ok}
 
 
 @app.get('/doctor')
@@ -79,7 +82,17 @@ def ui_home(request: Request):
         "fail": len([x for x in findings if x.get("status") == "FAIL"]),
         "error": len([x for x in findings if x.get("status") == "ERROR"]),
     }
-    return templates.TemplateResponse(request, "index.html", {"findings": findings[-100:], "counts": counts, "config_path": "config/product.yaml"})
+    etl = load_last_etl_report()
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "findings": findings[-100:],
+            "counts": counts,
+            "config_path": "config/product.yaml",
+            "etl": etl,
+        },
+    )
 
 
 @app.websocket("/ws/logs")
@@ -427,6 +440,27 @@ def testdata_status_api(role: str = Depends(get_role)):
 def artifacts_read(payload: dict, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return read_artifact(str(payload.get('path', '')))
+
+
+@app.get('/etl/profiles')
+def etl_profiles(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"profiles": list_etl_profiles()}
+
+
+@app.post('/etl/run')
+def etl_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    profile = payload.get('profile')
+    report = run_etl_profile(profile)
+    logbus.push("info", "etl_run", {"profile": report.get("profile"), "status": report.get("status")})
+    return report
+
+
+@app.get('/etl/last-report')
+def etl_last_report(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return load_last_etl_report()
 
 
 @app.get('/wave1/auth/jwt/verify')

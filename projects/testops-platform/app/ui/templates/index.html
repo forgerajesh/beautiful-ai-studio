@@ -34,6 +34,20 @@
   </div>
 
   <div class="card" style="margin-top:16px">
+    <h3>ETL Validation Summary</h3>
+    {% if etl and etl.ok %}
+      <div class="grid">
+        <div><b>Profile:</b> {{ etl.profile }}</div>
+        <div><b>Status:</b> {{ etl.status }}</div>
+        <div><b>Total checks:</b> {{ etl.summary.total_checks }}</div>
+        <div><b>Pass / Fail:</b> {{ etl.summary.pass }} / {{ etl.summary.fail }}</div>
+      </div>
+    {% else %}
+      <p>No ETL report yet. Run <code>POST /etl/run</code> to generate <code>reports/etl-report.json</code>.</p>
+    {% endif %}
+  </div>
+
+  <div class="card" style="margin-top:16px">
     <h3>Findings</h3>
     <table>
       <thead><tr><th>Domain</th><th>Check</th><th>Status</th><th>Severity</th><th>Summary</th></tr></thead>

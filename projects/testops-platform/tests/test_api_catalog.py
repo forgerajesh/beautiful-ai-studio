@@ -8,3 +8,4 @@ def test_catalog_endpoints():
     assert c.get('/channels', headers=h).status_code == 200
     assert c.get('/agents', headers=h).status_code == 200
     assert c.get('/workflows', headers=h).status_code == 200
+    assert c.get('/etl/profiles', headers=h).status_code == 200

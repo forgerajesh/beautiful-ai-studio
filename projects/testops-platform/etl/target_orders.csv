@@ -1,0 +1,5 @@
+order_id,customer_id,amount,status,updated_at,status_flag
+1001,C001,120.5,paid,2026-02-08T10:00:00Z,1
+1002,C002,89.0,paid,2026-02-08T10:05:00Z,1
+1003,C003,0.0,pending,2026-02-08T11:00:00Z,0
+1004,C004,499.9,paid,2026-02-08T11:30:00Z,1

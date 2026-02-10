@@ -1,0 +1,22 @@
+profiles:
+  - name: retail_orders
+    description: Validate retail orders pipeline from source extract to target mart.
+    source:
+      path: etl/source_orders.csv
+    target:
+      path: etl/target_orders.csv
+    required_columns: [order_id, customer_id, amount, status, updated_at]
+    key_columns: [order_id]
+    rowcount_tolerance: 1
+    freshness:
+      timestamp_column: updated_at
+      max_latency_minutes: 5000000
+    business_rules:
+      - name: amount_non_negative
+        column: amount
+        op: gte
+        value: 0
+      - name: status_numeric_flag
+        column: status_flag
+        op: gte
+        value: 0
