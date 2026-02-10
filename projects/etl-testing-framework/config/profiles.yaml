@@ -1,0 +1,18 @@
+profiles:
+  dev:
+    entity_overrides:
+      target_orders: target_orders
+    email_mode: never
+    ai_enabled: false
+
+  test:
+    entity_overrides:
+      target_orders: target_orders
+    email_mode: on_fail
+    ai_enabled: true
+
+  prod:
+    entity_overrides:
+      target_orders: target_orders
+    email_mode: always
+    ai_enabled: true

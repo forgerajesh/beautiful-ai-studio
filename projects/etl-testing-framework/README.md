@@ -392,3 +392,21 @@ Install Chromium/Chrome; run with `--pdf`.
 ## 20) License / usage
 
 Internal starter for accelerated ETL testing design and enterprise adaptation.
+
+## Additional improvements implemented
+- **CI pipeline**: `.github/workflows/etlq-ci.yml`
+- **Containerization**: `Dockerfile`
+- **Developer UX**: `Makefile` shortcuts (`make seed`, `make test`, `make run`, `make mcp`)
+- **Environment profiles**: `config/profiles.yaml` + `ETLQ_PROFILE` support in config loader
+
+### Profile usage
+```bash
+export ETLQ_PROFILE=dev   # or test/prod
+./scripts/etlq run --email-mode never
+```
+
+### Docker usage
+```bash
+docker build -t etlq .
+docker run --rm etlq
+```

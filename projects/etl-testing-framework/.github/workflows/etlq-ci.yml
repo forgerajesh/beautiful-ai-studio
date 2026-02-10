@@ -1,0 +1,46 @@
+name: etlq-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Seed demo DB
+        run: |
+          source .venv/bin/activate
+          python scripts/seed_demo_db.py
+
+      - name: Run critical/high tests
+        run: |
+          source .venv/bin/activate
+          pytest -q --junitxml=reports/junit.xml -m "critical or high"
+
+      - name: Run ETLQ UX flow (no email)
+        run: |
+          source .venv/bin/activate
+          PYTHONPATH=. python -m etlq.cli run --email-mode never --brand "CI Build"
+        continue-on-error: true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: etlq-reports
+          path: reports/

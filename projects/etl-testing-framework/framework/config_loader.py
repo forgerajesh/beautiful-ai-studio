@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 import yaml
@@ -13,6 +14,20 @@ def _load_yaml_if_exists(path: Path) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
+
+
+
+def _load_profile_context(config_dir: Path, base_context: dict) -> dict:
+    profile_name = os.getenv("ETLQ_PROFILE", "").strip()
+    if not profile_name:
+        return base_context
+    profiles = _load_yaml_if_exists(config_dir / "profiles.yaml").get("profiles", {})
+    prof = profiles.get(profile_name, {})
+    overrides = prof.get("entity_overrides", {})
+    ctx = dict(base_context)
+    for k, v in overrides.items():
+        ctx[f"entity.{k}"] = v
+    return _load_profile_context(config_dir, ctx)
 
 def _build_context(config_dir: Path) -> dict:
     # supports config/entities.yaml + config/business_rules.yaml
