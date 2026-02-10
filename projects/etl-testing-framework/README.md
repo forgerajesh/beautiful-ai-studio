@@ -191,3 +191,15 @@ Trend artifacts:
 - `reports/history.json`
 - `reports/executive_report.html`
 - `reports/executive_report.pdf` (best effort)
+
+
+Advanced ETLQ:
+```bash
+./scripts/etlq run --email-mode on_fail --brand "Raj Data Quality" --pdf --cio-email
+```
+
+New outputs:
+- `reports/history.json` (trend history)
+- `reports/executive_report.html`
+- `reports/executive_report.pdf` (best effort)
+- `reports/cio_summary.txt`
