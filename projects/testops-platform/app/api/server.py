@@ -43,6 +43,8 @@ from app.wave3.synthesis.pr_diff_synth import synthesize_tests_from_diff
 from app.wave3.remediation.hitl import create_checkpoint, approve_checkpoint, list_checkpoints
 from app.wave3.analytics.executive import build_executive_summary
 from app.wave3.analytics.trends import load_benchmark_trends
+from app.wave31.contract.validator import validate_contract
+from app.wave31.traceability.matrix import build_traceability
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -493,3 +495,18 @@ def wave3_analytics_executive(role: str = Depends(get_role)):
 def wave3_analytics_trends(limit: int = 50, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return {"points": load_benchmark_trends(limit=limit)}
+
+
+@app.post('/wave3.1/contract/validate')
+def wave31_contract_validate(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    contract_path = str(payload.get('contract_path', 'requirements/sample-contract.json'))
+    return validate_contract(contract_path)
+
+
+@app.post('/wave3.1/traceability/build')
+def wave31_traceability_build(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements_path = str(payload.get('requirements_path', 'requirements/requirements.json'))
+    tests_path = str(payload.get('tests_path', 'artifacts/TESTCASES.md'))
+    return build_traceability(requirements_path=requirements_path, tests_path=tests_path)

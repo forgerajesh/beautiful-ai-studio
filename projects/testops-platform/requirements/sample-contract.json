@@ -1,0 +1,10 @@
+{
+  "name": "auth-service-contract",
+  "version": "1.0.0",
+  "provider": "auth-service",
+  "consumer": "web-frontend",
+  "endpoints": [
+    {"method": "POST", "path": "/api/login", "expected_status": 200},
+    {"method": "GET", "path": "/api/profile", "expected_status": 200}
+  ]
+}

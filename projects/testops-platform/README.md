@@ -162,6 +162,19 @@ Wave3 artifacts:
 - `reports/wave3-hitl.json`
 - `reports/analytics/executive-summary.json`
 
+## Wave3.1 testing hardening
+- Contract schema validator endpoint
+- Requirements-to-tests traceability matrix builder
+
+Wave3.1 endpoints:
+- `POST /wave3.1/contract/validate`
+- `POST /wave3.1/traceability/build`
+
+Wave3.1 files:
+- `requirements/sample-contract.json`
+- `requirements/requirements.json`
+- `reports/traceability-matrix.json`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

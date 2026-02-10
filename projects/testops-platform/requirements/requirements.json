@@ -1,0 +1,6 @@
+[
+  {"id": "REQ-001", "title": "User login must succeed with valid credentials", "keyword": "login"},
+  {"id": "REQ-002", "title": "RBAC must enforce role-based access", "keyword": "rbac"},
+  {"id": "REQ-003", "title": "System must provide security validation", "keyword": "security"},
+  {"id": "REQ-004", "title": "System must generate executive analytics", "keyword": "analytics"}
+]
