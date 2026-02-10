@@ -131,6 +131,21 @@ Wave1 endpoints:
 Deploy starter:
 - `deploy/docker-compose.wave1.yml`
 
+## Wave2 (advanced implementation)
+- Policy-as-code gate evaluator (ALLOW/DENY)
+- Jira bi-directional sync primitives (comment + transition)
+- Risk-based agent selection from changed files
+- Two-approver workflow engine for governance
+
+Wave2 endpoints:
+- `POST /wave2/policy/evaluate`
+- `POST /wave2/risk/select-agents`
+- `POST /wave2/jira/add-comment`
+- `POST /wave2/jira/transition`
+- `POST /wave2/approval/request`
+- `POST /wave2/approval/approve`
+- `GET /wave2/approval/list`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

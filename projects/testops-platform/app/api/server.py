@@ -35,6 +35,10 @@ from app.wave1.queue.tasks import run_agent_task, run_all_agents_task
 from app.wave1.auth.jwt_auth import get_claims, role_from_claims
 from app.wave1.observability.otel import otel_status
 from app.wave1.integrations.testrail_results import push_result
+from app.wave2.policy.engine import evaluate_policy
+from app.wave2.jira.sync import add_comment, transition_issue
+from app.wave2.risk.selector import select_agents_by_risk
+from app.wave2.approval.workflow import create_request, approve, list_requests
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -396,3 +400,51 @@ def wave1_testrail_push_result(payload: dict, role: str = Depends(get_role)):
         status_id=int(payload.get('status_id', 1)),
         comment=str(payload.get('comment', 'Pushed from TestOps Wave1')),
     )
+
+
+@app.post('/wave2/policy/evaluate')
+def wave2_policy_evaluate(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return evaluate_policy(payload)
+
+
+@app.post('/wave2/risk/select-agents')
+def wave2_risk_select(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    files = payload.get('changed_files') or []
+    return {"agents": select_agents_by_risk(files)}
+
+
+@app.post('/wave2/jira/add-comment')
+def wave2_jira_add_comment(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return add_comment(str(payload.get('issue_key', '')), str(payload.get('comment', 'Automated update from TestOps')))
+
+
+@app.post('/wave2/jira/transition')
+def wave2_jira_transition(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return transition_issue(str(payload.get('issue_key', '')), str(payload.get('transition_id', '')))
+
+
+@app.post('/wave2/approval/request')
+def wave2_approval_request(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return create_request(
+        title=str(payload.get('title', 'Approval request')),
+        payload=payload.get('payload', {}),
+        requested_by=str(payload.get('requested_by', role)),
+    )
+
+
+@app.post('/wave2/approval/approve')
+def wave2_approval_approve(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    row = approve(str(payload.get('request_id', '')), str(payload.get('actor', role)))
+    return {"ok": row is not None, "request": row}
+
+
+@app.get('/wave2/approval/list')
+def wave2_approval_list(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"requests": list_requests()}
