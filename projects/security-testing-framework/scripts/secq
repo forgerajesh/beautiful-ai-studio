@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /home/vnc/.openclaw/workspace/projects/security-testing-framework
+python3 scripts/secq_cli.py "$@"

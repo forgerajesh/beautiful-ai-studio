@@ -149,3 +149,28 @@ Generated artifacts:
 - core SECQ checks run on every PR/push
 - full security bundle runs and publishes artifacts
 - SARIF is uploaded to GitHub Security tab
+
+## One-command SECQ UX
+
+Run core checks:
+```bash
+./scripts/secq
+```
+
+Run full world-class bundle:
+```bash
+./scripts/secq --full --target https://example.com
+```
+
+Run full + email notify:
+```bash
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USER=your_gmail@gmail.com
+export SMTP_PASS=your_app_password
+export REPORT_FROM=your_gmail@gmail.com
+export REPORT_TO=recipient@gmail.com
+./scripts/secq --full --target https://example.com --notify
+```
+
+Wrapper outputs a JSON summary including status, report paths, and tails of scanner output.
