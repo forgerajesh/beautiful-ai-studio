@@ -14,6 +14,10 @@ def test_wave3_synthesis_and_analytics():
     assert e.status_code == 200
     assert 'kpi' in e.json()
 
+    t = c.get('/wave3/analytics/trends', headers=h)
+    assert t.status_code == 200
+    assert 'points' in t.json()
+
 
 def test_wave3_hitl_flow():
     c = TestClient(app)

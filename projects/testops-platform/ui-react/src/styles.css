@@ -7,3 +7,10 @@ pre { background: #0b1020; color: #e2e8f0; padding: 12px; border-radius: 10px; o
 code { background: #eef2ff; padding: 2px 4px; border-radius: 4px; }
 li { margin: 6px 0; }
 input { padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
+.trend-row { display:flex; align-items:flex-end; gap:4px; height:110px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:6px; overflow:auto; }
+.bar-wrap { width:10px; height:100%; display:flex; align-items:flex-end; }
+.bar { width:100%; background:#2563eb; border-radius:3px 3px 0 0; }
+.risk-card { border-radius:8px; padding:8px; border:1px solid #cbd5e1; }
+.risk-low { background:#ecfdf5; border-color:#86efac; }
+.risk-med { background:#fffbeb; border-color:#fcd34d; }
+.risk-high { background:#fef2f2; border-color:#fca5a5; }

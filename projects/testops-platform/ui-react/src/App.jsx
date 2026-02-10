@@ -4,7 +4,7 @@ import {
   getChannels, getAgents, getWorkflows, runSuite, runAllAgents, runOneAgent, runWorkflow,
   sendAgentMessage, getTenants, getTenantChannels, saveTenantChannels, setApiKey,
   createJiraIssue, createTestRailRun, generateArtifacts,
-  getWave3Executive, listWave3Checkpoints, approveWave3Checkpoint,
+  getWave3Executive, getWave3Trends, listWave3Checkpoints, approveWave3Checkpoint,
 } from './api'
 
 export default function App() {
@@ -23,6 +23,7 @@ export default function App() {
   const [trRunName, setTrRunName] = useState('TestOps Automated Run')
   const [artifactProduct, setArtifactProduct] = useState('TestOps Platform')
   const [execSummary, setExecSummary] = useState(null)
+  const [trendPoints, setTrendPoints] = useState([])
   const [hitlQueue, setHitlQueue] = useState([])
 
   const wsUrl = useMemo(() => {
@@ -37,11 +38,13 @@ export default function App() {
       const w = await getWorkflows()
       const t = await getTenants()
       const ex = await getWave3Executive()
+      const tr = await getWave3Trends()
       const cp = await listWave3Checkpoints()
       setChannels(c.supported || [])
       setAgents(a.agents || [])
       setWorkflows(w.workflows || [])
       setExecSummary(ex)
+      setTrendPoints(tr.points || [])
       setHitlQueue(cp.checkpoints || [])
       const tenantList = t.tenants || []
       setTenants(tenantList)
@@ -103,8 +106,10 @@ export default function App() {
 
   const refreshExecutive = async () => {
     const ex = await getWave3Executive()
+    const tr = await getWave3Trends()
     const cp = await listWave3Checkpoints()
     setExecSummary(ex)
+    setTrendPoints(tr.points || [])
     setHitlQueue(cp.checkpoints || [])
     setOutput('Wave3 executive dashboard refreshed')
   }
@@ -224,8 +229,28 @@ export default function App() {
           </div>
         ) : <div style={{ marginTop: 8 }}>No executive summary yet. Run suite then refresh.</div>}
 
-        <h4 style={{ marginTop: 14 }}>Domain Breakdown</h4>
-        <pre>{JSON.stringify(execSummary?.domains || {}, null, 2)}</pre>
+        <h4 style={{ marginTop: 14 }}>Pass-rate Trend (Score)</h4>
+        <div className="trend-row">
+          {(trendPoints || []).map((p, i) => (
+            <div key={i} className="bar-wrap" title={`${p.ts || ''} | score=${p.score}`}>
+              <div className="bar" style={{ height: `${Math.max(4, Math.min(100, p.score))}%` }} />
+            </div>
+          ))}
+        </div>
+
+        <h4 style={{ marginTop: 14 }}>Domain Risk Heatmap</h4>
+        <div className="grid">
+          {Object.entries(execSummary?.domains || {}).map(([d, v]) => {
+            const risk = (v.fail || 0) + (v.error || 0)
+            const cls = risk >= 3 ? 'risk-high' : risk >= 1 ? 'risk-med' : 'risk-low'
+            return (
+              <div key={d} className={`risk-card ${cls}`}>
+                <b>{d}</b>
+                <div>total={v.total} fail={v.fail} error={v.error}</div>
+              </div>
+            )
+          })}
+        </div>
 
         <h4>HITL Queue</h4>
         <ul>

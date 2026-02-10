@@ -45,6 +45,7 @@ export const generateArtifacts = (payload) => api('/artifacts/generate', {
 })
 
 export const getWave3Executive = () => api('/wave3/analytics/executive')
+export const getWave3Trends = () => api('/wave3/analytics/trends?limit=30')
 export const listWave3Checkpoints = () => api('/wave3/remediation/checkpoint/list')
 export const approveWave3Checkpoint = (checkpoint_id, actor = 'ui-approver') =>
   api('/wave3/remediation/checkpoint/approve', {

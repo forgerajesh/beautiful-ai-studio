@@ -42,6 +42,7 @@ from app.wave2.approval.workflow import create_request, approve, list_requests
 from app.wave3.synthesis.pr_diff_synth import synthesize_tests_from_diff
 from app.wave3.remediation.hitl import create_checkpoint, approve_checkpoint, list_checkpoints
 from app.wave3.analytics.executive import build_executive_summary
+from app.wave3.analytics.trends import load_benchmark_trends
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -486,3 +487,9 @@ def wave3_hitl_list(role: str = Depends(get_role)):
 def wave3_analytics_executive(role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return build_executive_summary()
+
+
+@app.get('/wave3/analytics/trends')
+def wave3_analytics_trends(limit: int = 50, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"points": load_benchmark_trends(limit=limit)}
