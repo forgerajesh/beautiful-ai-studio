@@ -6,6 +6,7 @@ import {
   createJiraIssue, createTestRailRun, generateArtifacts,
   getWave3Executive, getWave3Trends, listWave3Checkpoints, approveWave3Checkpoint,
   validateContract, buildTraceability,
+  recordFlaky, listFlaky, evalPromotion, compareVisual, perfPercentiles, runChaos,
 } from './api'
 
 export default function App() {
@@ -29,6 +30,15 @@ export default function App() {
   const [contractPath, setContractPath] = useState('requirements/sample-contract.json')
   const [traceReqPath, setTraceReqPath] = useState('requirements/requirements.json')
   const [traceTestsPath, setTraceTestsPath] = useState('artifacts/TESTCASES.md')
+  const [flakyTestId, setFlakyTestId] = useState('TC-123')
+  const [flakyPassed, setFlakyPassed] = useState(false)
+  const [promotionFrom, setPromotionFrom] = useState('qa')
+  const [promotionTo, setPromotionTo] = useState('prod')
+  const [promotionCounts, setPromotionCounts] = useState('{"fail":0,"error":0}')
+  const [visualName, setVisualName] = useState('home')
+  const [visualPath, setVisualPath] = useState('reports/test-snap.bin')
+  const [perfSamples, setPerfSamples] = useState('10,20,30,40,50,60,70,80,90,100')
+  const [chaosScenario, setChaosScenario] = useState('latency-spike')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -131,6 +141,39 @@ export default function App() {
 
   const onBuildTraceability = async () => {
     const res = await buildTraceability({ requirements_path: traceReqPath, tests_path: traceTestsPath })
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onRecordFlaky = async () => {
+    const res = await recordFlaky(flakyTestId, flakyPassed)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onListFlaky = async () => {
+    const res = await listFlaky()
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onEvaluatePromotion = async () => {
+    let counts = {}
+    try { counts = JSON.parse(promotionCounts) } catch {}
+    const res = await evalPromotion({ from: promotionFrom, to: promotionTo, counts })
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onCompareVisual = async () => {
+    const res = await compareVisual(visualName, visualPath)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onPerfPercentiles = async () => {
+    const samples = perfSamples.split(',').map(x => parseInt(x.trim(), 10)).filter(x => !Number.isNaN(x))
+    const res = await perfPercentiles(samples)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onRunChaos = async () => {
+    const res = await runChaos(chaosScenario)
     setOutput(JSON.stringify(res, null, 2))
   }
 
@@ -286,6 +329,36 @@ export default function App() {
         <div><input value={traceReqPath} onChange={(e) => setTraceReqPath(e.target.value)} style={{ width: '80%' }} /></div>
         <div style={{ marginTop: 8 }}><input value={traceTestsPath} onChange={(e) => setTraceTestsPath(e.target.value)} style={{ width: '80%' }} /></div>
         <button onClick={onBuildTraceability}>Build Traceability</button>
+      </Card>
+
+      <Card title="Wave3.2 Advanced Quality Modules">
+        <h4>Flaky Governance</h4>
+        <input value={flakyTestId} onChange={(e) => setFlakyTestId(e.target.value)} style={{ width: '40%' }} />
+        <label style={{ marginLeft: 8 }}>
+          passed
+          <input type="checkbox" checked={flakyPassed} onChange={(e) => setFlakyPassed(e.target.checked)} style={{ marginLeft: 6 }} />
+        </label>
+        <button onClick={onRecordFlaky}>Record</button>
+        <button onClick={onListFlaky}>List Quarantined</button>
+
+        <h4 style={{ marginTop: 12 }}>Promotion Gate</h4>
+        <input value={promotionFrom} onChange={(e) => setPromotionFrom(e.target.value)} style={{ width: '10%' }} />
+        <input value={promotionTo} onChange={(e) => setPromotionTo(e.target.value)} style={{ width: '10%', marginLeft: 8 }} />
+        <input value={promotionCounts} onChange={(e) => setPromotionCounts(e.target.value)} style={{ width: '50%', marginLeft: 8 }} />
+        <button onClick={onEvaluatePromotion}>Evaluate</button>
+
+        <h4 style={{ marginTop: 12 }}>Visual Regression</h4>
+        <input value={visualName} onChange={(e) => setVisualName(e.target.value)} style={{ width: '20%' }} />
+        <input value={visualPath} onChange={(e) => setVisualPath(e.target.value)} style={{ width: '55%', marginLeft: 8 }} />
+        <button onClick={onCompareVisual}>Compare</button>
+
+        <h4 style={{ marginTop: 12 }}>Performance Percentiles</h4>
+        <input value={perfSamples} onChange={(e) => setPerfSamples(e.target.value)} style={{ width: '70%' }} />
+        <button onClick={onPerfPercentiles}>Compute P50/P95/P99</button>
+
+        <h4 style={{ marginTop: 12 }}>Chaos Simulation</h4>
+        <input value={chaosScenario} onChange={(e) => setChaosScenario(e.target.value)} style={{ width: '35%' }} />
+        <button onClick={onRunChaos}>Run Chaos</button>
       </Card>
 
       <Card title="Realtime Logs (WebSocket)">

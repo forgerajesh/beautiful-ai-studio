@@ -62,3 +62,25 @@ export const approveWave3Checkpoint = (checkpoint_id, actor = 'ui-approver') =>
     method: 'POST',
     body: JSON.stringify({ checkpoint_id, actor }),
   })
+
+export const recordFlaky = (test_id, passed) => api('/wave3.2/flaky/record', {
+  method: 'POST',
+  body: JSON.stringify({ test_id, passed }),
+})
+export const listFlaky = () => api('/wave3.2/flaky/list')
+export const evalPromotion = (payload) => api('/wave3.2/promotion/evaluate', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const compareVisual = (name, current_path) => api('/wave3.2/visual/compare', {
+  method: 'POST',
+  body: JSON.stringify({ name, current_path }),
+})
+export const perfPercentiles = (samples_ms) => api('/wave3.2/performance/percentiles', {
+  method: 'POST',
+  body: JSON.stringify({ samples_ms }),
+})
+export const runChaos = (scenario) => api('/wave3.2/chaos/run', {
+  method: 'POST',
+  body: JSON.stringify({ scenario }),
+})
