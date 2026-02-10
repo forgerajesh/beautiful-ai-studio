@@ -85,3 +85,31 @@ python scripts/secq.py --config config/targets.yaml
 - Add DAST integration (OWASP ZAP baseline/full scan)
 - Add policy engine (severity threshold by environment)
 - Add SARIF export for GitHub Security tab
+
+## Advanced security add-ons (implemented)
+
+### 1) OWASP ZAP baseline scan
+```bash
+./scripts/run_zap_baseline.sh https://example.com
+```
+Outputs:
+- `reports/zap_report.html`
+- `reports/zap_report.json`
+- `reports/zap_report.md`
+
+### 2) Dependency audit + SBOM
+```bash
+./scripts/generate_sbom_and_audit.sh
+```
+Outputs:
+- `reports/pip_audit.json`
+- `sbom/bom.json`
+
+### 3) SARIF export (for GitHub Security)
+```bash
+python scripts/export_sarif.py
+```
+Output:
+- `sarif/security_report.sarif`
+
+You can upload SARIF in GitHub using `github/codeql-action/upload-sarif`.
