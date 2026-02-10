@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Card from './components/Card'
 import {
   getChannels, getAgents, getWorkflows, runSuite, runAllAgents, runOneAgent, runWorkflow,
-  sendAgentMessage, getTenants, getTenantChannels, saveTenantChannels, setApiKey
+  sendAgentMessage, getTenants, getTenantChannels, saveTenantChannels, setApiKey,
+  createJiraIssue, createTestRailRun, generateArtifacts,
 } from './api'
 
 export default function App() {
@@ -16,6 +17,10 @@ export default function App() {
   const [tenants, setTenants] = useState([])
   const [tenantId, setTenantId] = useState('default')
   const [tenantCfg, setTenantCfg] = useState({ channels: {} })
+  const [jiraSummary, setJiraSummary] = useState('TestOps generated issue')
+  const [jiraDesc, setJiraDesc] = useState('Quality issue found in automated execution')
+  const [trRunName, setTrRunName] = useState('TestOps Automated Run')
+  const [artifactProduct, setArtifactProduct] = useState('TestOps Platform')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -74,6 +79,21 @@ export default function App() {
     setOutput(JSON.stringify(res, null, 2))
   }
 
+  const onCreateJira = async () => {
+    const res = await createJiraIssue({ summary: jiraSummary, description: jiraDesc, issue_type: 'Task' })
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onCreateTestRail = async () => {
+    const res = await createTestRailRun({ name: trRunName })
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onGenerateArtifacts = async () => {
+    const res = await generateArtifacts({ product_name: artifactProduct })
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
   const updateChannelField = (name, key, value) => {
     setTenantCfg((prev) => ({
       ...prev,
@@ -90,12 +110,12 @@ export default function App() {
   return (
     <div className="container">
       <h1>TestOps React Control Center</h1>
-      <p>One-stop testing product: channels + tools (agents) + workflows + RBAC + realtime logs</p>
+      <p>One-stop testing product: channels + tools (agents) + workflows + RBAC + realtime logs + Jira/TestRail</p>
 
       <Card title="Auth / RBAC">
         <input value={apiKey} onChange={(e) => setApiKeyState(e.target.value)} style={{ width: '50%' }} />
         <button onClick={onApiKeySave}>Save API Key</button>
-        <div style={{marginTop:8,fontSize:12}}>Use: admin-token | operator-token | viewer-token</div>
+        <div style={{ marginTop: 8, fontSize: 12 }}>Use: admin-token | operator-token | viewer-token</div>
       </Card>
 
       <div className="grid">
@@ -134,6 +154,22 @@ export default function App() {
         <button onClick={onSendMessage}>Send</button>
       </Card>
 
+      <Card title="Jira Integration">
+        <div><input value={jiraSummary} onChange={(e) => setJiraSummary(e.target.value)} style={{ width: '80%' }} /></div>
+        <div style={{ marginTop: 8 }}><input value={jiraDesc} onChange={(e) => setJiraDesc(e.target.value)} style={{ width: '80%' }} /></div>
+        <button onClick={onCreateJira}>Create Jira Issue</button>
+      </Card>
+
+      <Card title="TestRail Integration">
+        <input value={trRunName} onChange={(e) => setTrRunName(e.target.value)} style={{ width: '80%' }} />
+        <button onClick={onCreateTestRail}>Create TestRail Run</button>
+      </Card>
+
+      <Card title="Generate QA Artifacts">
+        <input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} style={{ width: '80%' }} />
+        <button onClick={onGenerateArtifacts}>Generate Testcases/Testplan/Strategy</button>
+      </Card>
+
       <Card title="Multi-tenant Channel Config">
         <div>
           <label>Tenant: </label>
@@ -148,11 +184,7 @@ export default function App() {
               {Object.entries(cfg).map(([k, v]) => (
                 <div key={k} style={{ marginBottom: 6 }}>
                   <label>{k}: </label>
-                  <input
-                    value={String(v)}
-                    onChange={(e) => updateChannelField(name, k, e.target.value)}
-                    style={{ width: '60%' }}
-                  />
+                  <input value={String(v)} onChange={(e) => updateChannelField(name, k, e.target.value)} style={{ width: '60%' }} />
                 </div>
               ))}
             </Card>

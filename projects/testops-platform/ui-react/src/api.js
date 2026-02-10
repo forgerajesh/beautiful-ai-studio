@@ -28,3 +28,18 @@ export const saveTenantChannels = (tenantId, payload) => api(`/tenants/${tenantI
   method: 'PUT',
   body: JSON.stringify(payload),
 })
+
+export const createJiraIssue = (payload) => api('/integrations/jira/create-issue', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+
+export const createTestRailRun = (payload) => api('/integrations/testrail/create-run', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+
+export const generateArtifacts = (payload) => api('/artifacts/generate', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
