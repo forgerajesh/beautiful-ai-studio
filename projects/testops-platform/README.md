@@ -5,7 +5,7 @@ A feature-oriented testing product combining:
 - Non-functional testing (SLA + light load checks)
 - Security testing (SECQ integration)
 - OpenClaw-style agent interaction layer across channels
-- Self-healing execution and best-practice quality governance
+- Self-healing execution (including AI locator repair) and best-practice quality governance
 
 Designed like a productized automation layer: one config, one runner, unified report, channel-driven commands, and a web UI.
 
