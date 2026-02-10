@@ -7,6 +7,8 @@
     "start": "node src/index.js",
     "run:example": "node src/index.js --workflow ./examples/saucedemo-login.json --notify",
     "telegram:listen": "node src/index.js --telegram-listen",
+    "plan": "node src/index.js --plan \"login to saucedemo and verify inventory\" --out ./examples/generated-workflow.json",
+    "dashboard": "node src/index.js --dashboard",
     "test": "node tests/engine.test.js"
   },
   "dependencies": {

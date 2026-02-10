@@ -1,8 +1,12 @@
 import fs from "fs";
+import path from "path";
 import { env } from "./config/env.js";
 import { log, err } from "./utils/logger.js";
 import { executeWorkflowFile } from "./agent/engine.js";
 import { pollTelegramUpdates, parseTelegramCommand, sendTelegramMessage } from "./channels/telegram.js";
+import { generateWorkflow, saveWorkflow } from "./agent/planner.js";
+import { appendHistory, buildDashboard } from "./agent/history.js";
+import { RunQueue } from "./agent/queue.js";
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -12,17 +16,60 @@ function arg(name) {
 const workflow = arg("--workflow");
 const notify = process.argv.includes("--notify");
 const telegramListen = process.argv.includes("--telegram-listen");
+const dashboardOnly = process.argv.includes("--dashboard");
+const planPrompt = arg("--plan");
+const planOut = arg("--out") || "./examples/generated-workflow.json";
+
+function saveRun(result) {
+  appendHistory({
+    ts: new Date().toISOString(),
+    name: result.name,
+    ok: !!result.ok,
+    durationMs: result.durationMs,
+    finalUrl: result.finalUrl,
+    error: result.error || ""
+  });
+  const dashboard = buildDashboard();
+  return dashboard;
+}
 
 async function runOnce() {
   if (!workflow) throw new Error("Missing --workflow <file>");
   const result = await executeWorkflowFile(workflow, { notify });
+  const dashboard = saveRun(result);
   log("Result:", JSON.stringify(result, null, 2));
+  log("Dashboard:", dashboard);
   if (!result.ok) process.exitCode = 1;
+}
+
+async function runPlanner() {
+  if (!planPrompt) throw new Error("Missing --plan <prompt>");
+  const wf = await generateWorkflow(planPrompt);
+  const out = path.resolve(planOut);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  saveWorkflow(wf, out);
+  log(`Generated workflow: ${out}`);
+  log(JSON.stringify(wf, null, 2));
 }
 
 async function runTelegramListener() {
   if (!env.telegram.token) throw new Error("TELEGRAM_BOT_TOKEN missing");
-  log("Telegram listener started. Command format: /run <workflow-json-path>");
+
+  const queue = new RunQueue({
+    worker: async (job) => executeWorkflowFile(job.workflowPath, { notify: true }),
+    concurrency: Number(process.env.RUN_CONCURRENCY || 2),
+    retries: Number(process.env.RUN_RETRIES || 1),
+    onResult: async (result, job) => {
+      saveRun(result);
+      const text = result.ok
+        ? `✅ ${result.name} passed in ${result.durationMs}ms`
+        : `❌ ${result.name} failed after retries. Error: ${result.error}`;
+      await sendTelegramMessage({ token: env.telegram.token, chatId: job.chatId, text });
+    }
+  });
+
+  log("Telegram listener started.");
+  log("Commands: /run <workflow-path> | /plan <prompt> | /dashboard");
 
   let offset = 0;
   while (true) {
@@ -38,29 +85,48 @@ async function runTelegramListener() {
         continue;
       }
 
-      if (!cmd.text.startsWith("/run ")) {
-        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: "Use: /run <workflow-file>" });
+      if (cmd.text.startsWith("/run ")) {
+        const wf = cmd.text.replace("/run ", "").trim();
+        if (!fs.existsSync(wf)) {
+          await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Workflow not found: ${wf}` });
+          continue;
+        }
+        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Queued: ${wf}` });
+        queue.add({ workflowPath: wf, chatId: cmd.chatId, name: wf });
         continue;
       }
 
-      const wf = cmd.text.replace("/run ", "").trim();
-      if (!fs.existsSync(wf)) {
-        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Workflow not found: ${wf}` });
+      if (cmd.text.startsWith("/plan ")) {
+        const prompt = cmd.text.replace("/plan ", "").trim();
+        const wf = await generateWorkflow(prompt);
+        const out = `./examples/generated-${Date.now()}.json`;
+        saveWorkflow(wf, out);
+        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Generated workflow: ${out}` });
         continue;
       }
 
-      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Running workflow: ${wf}` });
-      const result = await executeWorkflowFile(wf, { notify: true });
-      const text = result.ok
-        ? `✅ ${result.name} passed in ${result.durationMs}ms`
-        : `❌ ${result.name} failed: ${result.error}`;
-      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text });
+      if (cmd.text.startsWith("/dashboard")) {
+        const p = buildDashboard();
+        await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: `Dashboard: ${p}` });
+        continue;
+      }
+
+      await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: "Use /run <workflow> | /plan <prompt> | /dashboard" });
     }
   }
 }
 
 (async () => {
   try {
+    if (dashboardOnly) {
+      const p = buildDashboard();
+      log("Dashboard generated:", p);
+      return;
+    }
+    if (planPrompt) {
+      await runPlanner();
+      return;
+    }
     if (telegramListen) await runTelegramListener();
     else await runOnce();
   } catch (e) {

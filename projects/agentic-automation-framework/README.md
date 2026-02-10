@@ -1,14 +1,38 @@
 # Agentic Playwright Automation Framework (Telegram + WhatsApp)
 
-A practical agentic automation starter using **Playwright** with outbound notifications to:
-- Telegram Bot API
-- WhatsApp Cloud API (Meta)
+A practical agentic automation framework using **Playwright** with:
+- **Natural-language → workflow generation**
+- **Run history dashboard**
+- **Retry queue + concurrency control**
+- Telegram + WhatsApp notifications
 
-## What you get
-- Workflow-driven browser automation (`examples/*.json`)
-- Agent engine to execute workflows and send status notifications
-- Telegram command listener (`/run <workflow-path>`) for remote triggering
-- WhatsApp integration for execution alerts
+## Features implemented
+
+### 1) Natural-language planner
+Generate workflow JSON from prompt:
+```bash
+npm run plan
+# or
+node src/index.js --plan "login to saucedemo and verify inventory" --out ./examples/generated-workflow.json
+```
+- Uses OpenAI-compatible API if `OPENAI_API_KEY` is set
+- Falls back to deterministic local generator if AI is unavailable
+
+### 2) Run history dashboard
+Build dashboard from run history:
+```bash
+npm run dashboard
+```
+Outputs:
+- `reports/run-history.json`
+- `reports/dashboard.html`
+
+### 3) Retry queue + concurrency control
+Telegram listener mode now executes queued runs with:
+- configurable concurrency (`RUN_CONCURRENCY`)
+- configurable retries (`RUN_RETRIES`)
+
+---
 
 ## Setup
 ```bash
@@ -19,25 +43,38 @@ npx playwright install chromium
 ```
 
 ## Configure `.env`
+- `HEADLESS=true|false`
+- `OPENAI_API_KEY` (optional, for AI workflow planning)
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 - `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TO`
-- optional `TELEGRAM_ALLOWED_USER_IDS`
+- `TELEGRAM_ALLOWED_USER_IDS` (optional access control)
+- `RUN_CONCURRENCY`, `RUN_RETRIES`
+
+---
 
 ## Run a workflow once
 ```bash
-npm run run:example
-# or
 node src/index.js --workflow ./examples/saucedemo-login.json --notify
 ```
 
-## Run Telegram listener (agent mode)
+## Telegram listener (agent mode)
 ```bash
 npm run telegram:listen
 ```
-Then in Telegram send:
+
+Supported Telegram commands:
+- `/run <workflow-path>`
+- `/plan <natural language prompt>`
+- `/dashboard`
+
+Example:
 ```text
 /run ./examples/saucedemo-login.json
+/plan login to saucedemo and take screenshot after inventory page
+/dashboard
 ```
+
+---
 
 ## Workflow schema
 ```json
@@ -53,20 +90,26 @@ Then in Telegram send:
 }
 ```
 
-## Supported actions
+Supported actions:
 - `type`
 - `click`
 - `waitFor`
 - `expectUrlContains`
 - `screenshot`
 
-## Security notes
-- Restrict Telegram listener with `TELEGRAM_ALLOWED_USER_IDS`
-- Use least-privileged WhatsApp tokens
-- Keep `.env` out of source control
+---
 
-## Next recommended upgrades
-- Add queue + retries + run IDs
-- Add RBAC and command signing
-- Add persistent run history + HTML dashboard
-- Add LLM planner for natural-language to workflow generation
+## Security best practices
+- Restrict bot commands with `TELEGRAM_ALLOWED_USER_IDS`
+- Use least-privilege WhatsApp tokens
+- Keep `.env` out of source control
+- Store secrets in vault/secret manager for production
+
+---
+
+## Next upgrades (optional)
+- Persistent queue backend (Redis/Postgres)
+- Multi-tenant RBAC
+- Browser session pooling
+- Smart self-healing selectors
+- LLM-based step validator and risk scoring
