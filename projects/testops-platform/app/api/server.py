@@ -15,6 +15,8 @@ from app.channels.base import ChannelMessage
 from app.channels.registry import ChannelRegistry
 from app.api.schemas import AgentMessageRequest, RunAgentRequest, RunWorkflowRequest
 from app.api.workflows import list_workflows
+from app.api.artifacts_io import list_artifacts, read_artifact
+from app.core.doctor import run_doctor
 from app.auth.rbac import get_role, require_role
 from app.state.logbus import logbus
 from app.channels.config.store import list_tenants, get_tenant, upsert_tenant
@@ -58,6 +60,12 @@ templates = Jinja2Templates(directory="app/ui/templates")
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get('/doctor')
+def doctor(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return run_doctor()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -365,6 +373,18 @@ def integrations_generate_artifacts(payload: dict, role: str = Depends(get_role)
     tp = generate_testplan(product_name, out_dir)
     ts = generate_teststrategy(product_name, out_dir)
     return {"ok": True, "files": {"testcases": tc, "testplan": tp, "teststrategy": ts}}
+
+
+@app.get('/artifacts/list')
+def artifacts_list(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"files": list_artifacts()}
+
+
+@app.post('/artifacts/read')
+def artifacts_read(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return read_artifact(str(payload.get('path', '')))
 
 
 @app.get('/wave1/auth/jwt/verify')

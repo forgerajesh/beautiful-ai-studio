@@ -7,6 +7,7 @@ import {
   getWave3Executive, getWave3Trends, listWave3Checkpoints, approveWave3Checkpoint,
   validateContract, buildTraceability,
   recordFlaky, listFlaky, evalPromotion, compareVisual, perfPercentiles, runChaos,
+  listArtifacts, readArtifact, runDoctor,
 } from './api'
 
 export default function App() {
@@ -39,6 +40,8 @@ export default function App() {
   const [visualPath, setVisualPath] = useState('reports/test-snap.bin')
   const [perfSamples, setPerfSamples] = useState('10,20,30,40,50,60,70,80,90,100')
   const [chaosScenario, setChaosScenario] = useState('latency-spike')
+  const [artifactFiles, setArtifactFiles] = useState([])
+  const [selectedArtifact, setSelectedArtifact] = useState('')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -54,12 +57,15 @@ export default function App() {
       const ex = await getWave3Executive()
       const tr = await getWave3Trends()
       const cp = await listWave3Checkpoints()
+      const af = await listArtifacts()
       setChannels(c.supported || [])
       setAgents(a.agents || [])
       setWorkflows(w.workflows || [])
       setExecSummary(ex)
       setTrendPoints(tr.points || [])
       setHitlQueue(cp.checkpoints || [])
+      setArtifactFiles(af.files || [])
+      setSelectedArtifact((af.files || [])[0] || '')
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -177,6 +183,24 @@ export default function App() {
     setOutput(JSON.stringify(res, null, 2))
   }
 
+  const onDoctor = async () => {
+    const res = await runDoctor()
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const onRefreshArtifacts = async () => {
+    const af = await listArtifacts()
+    setArtifactFiles(af.files || [])
+    if ((af.files || []).length > 0) setSelectedArtifact(af.files[0])
+    setOutput(JSON.stringify(af, null, 2))
+  }
+
+  const onReadArtifact = async () => {
+    if (!selectedArtifact) return
+    const res = await readArtifact(selectedArtifact)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
   const updateChannelField = (name, key, value) => {
     setTenantCfg((prev) => ({
       ...prev,
@@ -251,6 +275,17 @@ export default function App() {
       <Card title="Generate QA Artifacts">
         <input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} style={{ width: '80%' }} />
         <button onClick={onGenerateArtifacts}>Generate Testcases/Testplan/Strategy</button>
+      </Card>
+
+      <Card title="Pending Activity Utilities (Doctor + Artifact Reader)">
+        <button onClick={onDoctor}>Run Doctor</button>
+        <button onClick={onRefreshArtifacts}>Refresh Artifacts</button>
+        <div style={{ marginTop: 8 }}>
+          <select value={selectedArtifact} onChange={(e) => setSelectedArtifact(e.target.value)} style={{ width: '70%' }}>
+            {(artifactFiles || []).map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <button onClick={onReadArtifact}>Read</button>
+        </div>
       </Card>
 
       <Card title="Multi-tenant Channel Config">

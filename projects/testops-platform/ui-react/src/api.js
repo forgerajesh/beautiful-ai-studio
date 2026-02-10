@@ -43,6 +43,12 @@ export const generateArtifacts = (payload) => api('/artifacts/generate', {
   method: 'POST',
   body: JSON.stringify(payload),
 })
+export const listArtifacts = () => api('/artifacts/list')
+export const readArtifact = (path) => api('/artifacts/read', {
+  method: 'POST',
+  body: JSON.stringify({ path }),
+})
+export const runDoctor = () => api('/doctor')
 
 export const getWave3Executive = () => api('/wave3/analytics/executive')
 export const getWave3Trends = () => api('/wave3/analytics/trends?limit=30')
