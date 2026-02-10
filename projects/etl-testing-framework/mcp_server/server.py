@@ -74,6 +74,14 @@ def run_ai_agent(request: str) -> str:
     return json.dumps(result, indent=2)
 
 
+
+@mcp.tool()
+def send_results_email() -> str:
+    """Send ETL test results to configured Gmail/SMTP recipient."""
+    cmd = ["python", "scripts/send_email_report.py"]
+    result = _run(cmd)
+    return json.dumps(result, indent=2)
+
 @mcp.tool()
 def show_suite_config() -> str:
     """Return active tests.yaml content."""

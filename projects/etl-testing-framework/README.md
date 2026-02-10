@@ -140,3 +140,23 @@ python -m mcp_server.server
 - `generate_tests_from_metadata()`
 - `run_ai_agent(request)`
 - `show_suite_config()`
+
+## Send results to Gmail
+Use SMTP with Gmail App Password.
+
+```bash
+cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
+export SMTP_HOST=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USER=your_gmail@gmail.com
+export SMTP_PASS=your_16_char_app_password
+export REPORT_FROM=your_gmail@gmail.com
+export REPORT_TO=recipient@gmail.com
+python scripts/send_email_report.py
+```
+
+Attachments sent (if present):
+- `reports/junit.xml`
+- `reports/ai_remediation.md`
+
+> Note: For Gmail, use **App Password**, not your normal account password.
