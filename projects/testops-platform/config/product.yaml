@@ -1,0 +1,33 @@
+product:
+  name: testops-platform
+  version: 1.0.0
+
+execution:
+  mode: local
+  fail_on:
+    critical: true
+
+features:
+  functional:
+    enabled: true
+    workflows:
+      - ../agentic-automation-framework-python/examples/saucedemo-login.json
+  non_functional:
+    enabled: true
+    checks:
+      - id: api_latency
+        type: http_sla
+        url: https://example.com
+        max_ms: 1500
+      - id: api_light_load
+        type: light_load
+        url: https://example.com
+        requests: 5
+        max_avg_ms: 2000
+  security:
+    enabled: true
+    mode: core
+    project_path: ../security-testing-framework
+
+reporting:
+  out_dir: reports
