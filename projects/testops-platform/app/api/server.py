@@ -17,6 +17,7 @@ from app.api.schemas import AgentMessageRequest, RunAgentRequest, RunWorkflowReq
 from app.api.workflows import list_workflows
 from app.api.artifacts_io import list_artifacts, read_artifact
 from app.core.doctor import run_doctor
+from app.testdata.manager import list_profiles, seed_profile, load_profile, generate_synthetic, reset_active, status as testdata_status
 from app.auth.rbac import get_role, require_role
 from app.state.logbus import logbus
 from app.channels.config.store import list_tenants, get_tenant, upsert_tenant
@@ -379,6 +380,47 @@ def integrations_generate_artifacts(payload: dict, role: str = Depends(get_role)
 def artifacts_list(role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return {"files": list_artifacts()}
+
+
+@app.get('/testdata/profiles')
+def testdata_profiles(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"profiles": list_profiles()}
+
+
+@app.post('/testdata/seed')
+def testdata_seed(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    profile = str(payload.get('profile', 'default'))
+    return {"ok": True, "path": seed_profile(profile)}
+
+
+@app.post('/testdata/load')
+def testdata_load(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return load_profile(str(payload.get('profile', 'default')))
+
+
+@app.post('/testdata/generate')
+def testdata_generate(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return generate_synthetic(
+        profile=str(payload.get('profile', 'synthetic')),
+        users=int(payload.get('users', 10)),
+        orders=int(payload.get('orders', 20)),
+    )
+
+
+@app.post('/testdata/reset')
+def testdata_reset(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return reset_active()
+
+
+@app.get('/testdata/status')
+def testdata_status_api(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return testdata_status()
 
 
 @app.post('/artifacts/read')

@@ -1,0 +1,55 @@
+{
+  "name": "demo",
+  "users": [
+    {
+      "username": "user_0",
+      "role": "user"
+    },
+    {
+      "username": "user_1",
+      "role": "admin"
+    },
+    {
+      "username": "user_2",
+      "role": "admin"
+    },
+    {
+      "username": "user_3",
+      "role": "manager"
+    },
+    {
+      "username": "user_4",
+      "role": "user"
+    }
+  ],
+  "orders": [
+    {
+      "id": 10000,
+      "status": "cancelled"
+    },
+    {
+      "id": 10001,
+      "status": "shipped"
+    },
+    {
+      "id": 10002,
+      "status": "created"
+    },
+    {
+      "id": 10003,
+      "status": "cancelled"
+    },
+    {
+      "id": 10004,
+      "status": "paid"
+    },
+    {
+      "id": 10005,
+      "status": "cancelled"
+    },
+    {
+      "id": 10006,
+      "status": "created"
+    }
+  ]
+}

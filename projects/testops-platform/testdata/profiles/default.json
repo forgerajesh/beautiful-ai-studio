@@ -1,0 +1,12 @@
+{
+  "name": "default",
+  "users": [
+    {"username": "standard_user", "role": "user"},
+    {"username": "problem_user", "role": "user"},
+    {"username": "qa_admin", "role": "admin"}
+  ],
+  "orders": [
+    {"id": 1001, "status": "created"},
+    {"id": 1002, "status": "paid"}
+  ]
+}
