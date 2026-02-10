@@ -114,6 +114,23 @@ Generated files:
 - `artifacts/TESTPLAN.md`
 - `artifacts/TESTSTRATEGY.md`
 
+## Wave1 (advanced implementation)
+- Celery + Redis queue hooks for distributed worker execution
+- JWT verify endpoint (HS256) for OIDC/JWT migration path
+- OTEL readiness endpoint
+- TestRail result push endpoint
+
+Wave1 endpoints:
+- `GET /wave1/auth/jwt/verify` (Authorization: Bearer <jwt>)
+- `GET /wave1/otel/status`
+- `POST /wave1/queue/run-agent`
+- `POST /wave1/queue/run-all`
+- `GET /wave1/queue/task/{task_id}`
+- `POST /wave1/testrail/push-result`
+
+Deploy starter:
+- `deploy/docker-compose.wave1.yml`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

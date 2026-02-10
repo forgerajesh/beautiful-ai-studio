@@ -31,6 +31,10 @@ from app.v31.governance.audit import log_approval, list_audit
 from app.integrations.jira import create_jira_issue
 from app.integrations.testrail import create_test_run
 from app.integrations.artifacts import generate_testcases, generate_testplan, generate_teststrategy
+from app.wave1.queue.tasks import run_agent_task, run_all_agents_task
+from app.wave1.auth.jwt_auth import get_claims, role_from_claims
+from app.wave1.observability.otel import otel_status
+from app.wave1.integrations.testrail_results import push_result
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -346,3 +350,49 @@ def integrations_generate_artifacts(payload: dict, role: str = Depends(get_role)
     tp = generate_testplan(product_name, out_dir)
     ts = generate_teststrategy(product_name, out_dir)
     return {"ok": True, "files": {"testcases": tc, "testplan": tp, "teststrategy": ts}}
+
+
+@app.get('/wave1/auth/jwt/verify')
+def wave1_jwt_verify(claims: dict = Depends(get_claims)):
+    return {"ok": True, "claims": claims, "role": role_from_claims(claims)}
+
+
+@app.get('/wave1/otel/status')
+def wave1_otel_status(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return otel_status()
+
+
+@app.post('/wave1/queue/run-agent')
+def wave1_queue_run_agent(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    config_path = str(payload.get("config_path", "config/product.yaml"))
+    agent = str(payload.get("agent", "playwright"))
+    task = run_agent_task.delay(config_path, agent)
+    return {"ok": True, "task_id": task.id, "agent": agent}
+
+
+@app.post('/wave1/queue/run-all')
+def wave1_queue_run_all(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    config_path = str(payload.get("config_path", "config/product.yaml"))
+    task = run_all_agents_task.delay(config_path)
+    return {"ok": True, "task_id": task.id}
+
+
+@app.get('/wave1/queue/task/{task_id}')
+def wave1_queue_task(task_id: str, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    t = run_agent_task.AsyncResult(task_id)
+    return {"task_id": task_id, "state": t.state, "ready": t.ready(), "result": t.result if t.ready() else None}
+
+
+@app.post('/wave1/testrail/push-result')
+def wave1_testrail_push_result(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return push_result(
+        run_id=int(payload.get('run_id')),
+        case_id=int(payload.get('case_id')),
+        status_id=int(payload.get('status_id', 1)),
+        comment=str(payload.get('comment', 'Pushed from TestOps Wave1')),
+    )
