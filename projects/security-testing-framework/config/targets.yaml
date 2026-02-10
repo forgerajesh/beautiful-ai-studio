@@ -1,0 +1,54 @@
+project: security-testing-framework
+profile: baseline
+
+targets:
+  - id: demo_web
+    type: web
+    base_url: https://example.com
+    tags: [internet, web]
+
+checks:
+  - id: tls_certificate_health
+    type: tls_certificate
+    severity: high
+    enabled: true
+    params:
+      min_days_remaining: 21
+
+  - id: security_headers
+    type: security_headers
+    severity: high
+    enabled: true
+    params:
+      required_headers:
+        - Strict-Transport-Security
+        - Content-Security-Policy
+        - X-Content-Type-Options
+        - X-Frame-Options
+        - Referrer-Policy
+
+  - id: open_redirect_probe
+    type: open_redirect
+    severity: medium
+    enabled: true
+    params:
+      probe_paths:
+        - /redirect?next=https://evil.example
+        - /login?returnUrl=https://evil.example
+
+  - id: local_secrets_scan
+    type: secrets_scan
+    severity: critical
+    enabled: true
+    params:
+      paths:
+        - .
+      exclude:
+        - .venv
+        - node_modules
+        - reports
+        - .git
+
+reporting:
+  output_dir: reports
+  formats: [json, html, junit]
