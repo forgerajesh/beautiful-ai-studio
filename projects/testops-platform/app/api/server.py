@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import Optional
+from pathlib import Path
+import json
 
 from app.core.config import load_config
 from app.core.orchestrator import run_product_suite
@@ -8,7 +12,8 @@ from app.agent.service import AgentService
 from app.channels.base import ChannelMessage
 from app.channels.registry import ChannelRegistry
 
-app = FastAPI(title="TestOps Platform API", version="1.1.0")
+app = FastAPI(title="TestOps Platform API", version="1.2.0")
+templates = Jinja2Templates(directory="app/ui/templates")
 
 
 class AgentMessageRequest(BaseModel):
@@ -28,6 +33,26 @@ class RunAgentRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/", response_class=HTMLResponse)
+def ui_home(request: Request):
+    p = Path("reports/summary.json")
+    findings = json.loads(p.read_text()) if p.exists() else []
+    counts = {
+        "total": len(findings),
+        "pass": len([x for x in findings if x.get("status") == "PASS"]),
+        "fail": len([x for x in findings if x.get("status") == "FAIL"]),
+        "error": len([x for x in findings if x.get("status") == "ERROR"]),
+    }
+    return templates.TemplateResponse(request, "index.html", {"findings": findings[-100:], "counts": counts, "config_path": "config/product.yaml"})
+
+
+@app.post("/ui/run")
+def ui_run(config_path: str = "config/product.yaml"):
+    cfg = load_config(config_path)
+    run_product_suite(cfg)
+    return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/channels")

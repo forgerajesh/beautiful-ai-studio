@@ -5,8 +5,9 @@ A feature-oriented testing product combining:
 - Non-functional testing (SLA + light load checks)
 - Security testing (SECQ integration)
 - OpenClaw-style agent interaction layer across channels
+- Self-healing execution and best-practice quality governance
 
-Designed like a productized automation layer: one config, one runner, unified report, and channel-driven commands.
+Designed like a productized automation layer: one config, one runner, unified report, channel-driven commands, and a web UI.
 
 ## Project structure
 ```text
@@ -48,8 +49,11 @@ uvicorn app.api.server:app --host 0.0.0.0 --port 8090
 
 Endpoints:
 - `GET /health`
+- `GET /` (web UI dashboard)
+- `POST /ui/run` (run suite from UI)
 - `GET /channels`
 - `POST /run?config_path=config/product.yaml`
+- `POST /agent/run`
 - `POST /agent/message` (agent command entry)
 - `POST /webhook/{channel}` (generic webhook ingress for 10+ channels)
 
