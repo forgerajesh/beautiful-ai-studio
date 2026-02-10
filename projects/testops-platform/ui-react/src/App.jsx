@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Card from './components/Card'
-import { getChannels, getAgents, getWorkflows, runSuite, runAllAgents, runOneAgent, runWorkflow, sendAgentMessage } from './api'
+import {
+  getChannels, getAgents, getWorkflows, runSuite, runAllAgents, runOneAgent, runWorkflow,
+  sendAgentMessage, getTenants, getTenantChannels, saveTenantChannels, setApiKey
+} from './api'
 
 export default function App() {
   const [channels, setChannels] = useState([])
@@ -8,17 +11,45 @@ export default function App() {
   const [workflows, setWorkflows] = useState([])
   const [output, setOutput] = useState('Ready')
   const [message, setMessage] = useState('/help')
+  const [apiKey, setApiKeyState] = useState(localStorage.getItem('testops_api_key') || 'admin-token')
+  const [logs, setLogs] = useState([])
+  const [tenants, setTenants] = useState([])
+  const [tenantId, setTenantId] = useState('default')
+  const [tenantCfg, setTenantCfg] = useState({ channels: {} })
+
+  const wsUrl = useMemo(() => {
+    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    return `${proto}://${window.location.hostname}:8090/ws/logs`
+  }, [])
 
   useEffect(() => {
     ;(async () => {
       const c = await getChannels()
       const a = await getAgents()
       const w = await getWorkflows()
+      const t = await getTenants()
       setChannels(c.supported || [])
       setAgents(a.agents || [])
       setWorkflows(w.workflows || [])
+      const tenantList = t.tenants || []
+      setTenants(tenantList)
+      const first = tenantList[0] || 'default'
+      setTenantId(first)
+      const tc = await getTenantChannels(first)
+      setTenantCfg(tc.config || { channels: {} })
     })()
   }, [])
+
+  useEffect(() => {
+    const ws = new WebSocket(wsUrl)
+    ws.onmessage = (evt) => {
+      try {
+        const d = JSON.parse(evt.data)
+        setLogs(d.events || [])
+      } catch {}
+    }
+    return () => ws.close()
+  }, [wsUrl])
 
   const onRunSuite = async () => setOutput(JSON.stringify(await runSuite(), null, 2))
   const onRunAllAgents = async () => setOutput(JSON.stringify(await runAllAgents(), null, 2))
@@ -26,10 +57,46 @@ export default function App() {
   const onRunWorkflow = async (wf) => setOutput(JSON.stringify(await runWorkflow(wf), null, 2))
   const onSendMessage = async () => setOutput(JSON.stringify(await sendAgentMessage(message), null, 2))
 
+  const onApiKeySave = () => {
+    setApiKey(apiKey)
+    localStorage.setItem('testops_api_key', apiKey)
+    setOutput('API key saved. Refresh to re-auth all fetches.')
+  }
+
+  const onTenantLoad = async (id) => {
+    setTenantId(id)
+    const tc = await getTenantChannels(id)
+    setTenantCfg(tc.config || { channels: {} })
+  }
+
+  const onTenantSave = async () => {
+    const res = await saveTenantChannels(tenantId, tenantCfg)
+    setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const updateChannelField = (name, key, value) => {
+    setTenantCfg((prev) => ({
+      ...prev,
+      channels: {
+        ...(prev.channels || {}),
+        [name]: {
+          ...((prev.channels || {})[name] || {}),
+          [key]: value,
+        },
+      },
+    }))
+  }
+
   return (
     <div className="container">
       <h1>TestOps React Control Center</h1>
-      <p>One-stop testing product: channels + tools (agents) + workflows</p>
+      <p>One-stop testing product: channels + tools (agents) + workflows + RBAC + realtime logs</p>
+
+      <Card title="Auth / RBAC">
+        <input value={apiKey} onChange={(e) => setApiKeyState(e.target.value)} style={{ width: '50%' }} />
+        <button onClick={onApiKeySave}>Save API Key</button>
+        <div style={{marginTop:8,fontSize:12}}>Use: admin-token | operator-token | viewer-token</div>
+      </Card>
 
       <div className="grid">
         <Card title="Platform Runs">
@@ -65,6 +132,36 @@ export default function App() {
       <Card title="Agent Command">
         <input value={message} onChange={(e) => setMessage(e.target.value)} style={{ width: '70%' }} />
         <button onClick={onSendMessage}>Send</button>
+      </Card>
+
+      <Card title="Multi-tenant Channel Config">
+        <div>
+          <label>Tenant: </label>
+          <select value={tenantId} onChange={(e) => onTenantLoad(e.target.value)}>
+            {tenants.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <button onClick={onTenantSave}>Save Config</button>
+        </div>
+        <div className="grid" style={{ marginTop: 10 }}>
+          {Object.entries(tenantCfg.channels || {}).map(([name, cfg]) => (
+            <Card key={name} title={name}>
+              {Object.entries(cfg).map(([k, v]) => (
+                <div key={k} style={{ marginBottom: 6 }}>
+                  <label>{k}: </label>
+                  <input
+                    value={String(v)}
+                    onChange={(e) => updateChannelField(name, k, e.target.value)}
+                    style={{ width: '60%' }}
+                  />
+                </div>
+              ))}
+            </Card>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Realtime Logs (WebSocket)">
+        <pre>{JSON.stringify(logs.slice(-20), null, 2)}</pre>
       </Card>
 
       <Card title="Output">

@@ -1,0 +1,61 @@
+{
+  "tenants": {
+    "default": {
+      "channels": {
+        "telegram": {
+          "enabled": true,
+          "bot_token": "",
+          "chat_id": ""
+        },
+        "whatsapp": {
+          "enabled": false,
+          "access_token": "",
+          "phone_number_id": "",
+          "to": ""
+        },
+        "slack": {
+          "enabled": false,
+          "bot_token": "",
+          "channel": ""
+        },
+        "discord": {
+          "enabled": false,
+          "bot_token": "",
+          "channel_id": ""
+        },
+        "signal": {
+          "enabled": false
+        },
+        "imessage": {
+          "enabled": false
+        },
+        "googlechat": {
+          "enabled": false
+        },
+        "teams": {
+          "enabled": false
+        },
+        "email": {
+          "enabled": false,
+          "smtp_host": "",
+          "to": ""
+        },
+        "sms": {
+          "enabled": false
+        },
+        "webchat": {
+          "enabled": true
+        }
+      }
+    },
+    "acme": {
+      "channels": {
+        "telegram": {
+          "enabled": true,
+          "bot_token": "abc",
+          "chat_id": "123"
+        }
+      }
+    }
+  }
+}

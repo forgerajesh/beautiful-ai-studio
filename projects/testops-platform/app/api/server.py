@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, WebSocket
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import asyncio
 
 from app.core.config import load_config
 from app.core.orchestrator import run_product_suite
@@ -14,8 +15,11 @@ from app.channels.base import ChannelMessage
 from app.channels.registry import ChannelRegistry
 from app.api.schemas import AgentMessageRequest, RunAgentRequest, RunWorkflowRequest
 from app.api.workflows import list_workflows
+from app.auth.rbac import get_role, require_role
+from app.state.logbus import logbus
+from app.channels.config.store import list_tenants, get_tenant, upsert_tenant
 
-app = FastAPI(title="TestOps Platform API", version="1.3.0")
+app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
 
 
@@ -37,72 +41,103 @@ def ui_home(request: Request):
     return templates.TemplateResponse(request, "index.html", {"findings": findings[-100:], "counts": counts, "config_path": "config/product.yaml"})
 
 
+@app.websocket("/ws/logs")
+async def ws_logs(ws: WebSocket):
+    await ws.accept()
+    last = 0
+    try:
+        while True:
+            data = logbus.tail(200)
+            if len(data) != last:
+                await ws.send_json({"events": data[-50:]})
+                last = len(data)
+            await asyncio.sleep(1)
+    except Exception:
+        await ws.close()
+
+
 @app.post("/ui/run")
-def ui_run(config_path: str = "config/product.yaml"):
+def ui_run(config_path: str = "config/product.yaml", role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
     cfg = load_config(config_path)
-    run_product_suite(cfg)
+    findings, report = run_product_suite(cfg)
+    logbus.push("info", "suite_run", {"status": "PASS" if report["counts"]["fail"] == 0 and report["counts"]["error"] == 0 else "FAIL", "counts": report["counts"]})
     return RedirectResponse(url="/", status_code=303)
 
 
 @app.get("/channels")
-def channels(config_path: str = "config/product.yaml"):
+def channels(config_path: str = "config/product.yaml", role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
     cfg = load_config(config_path)
     reg = ChannelRegistry(cfg)
     return {"supported": reg.SUPPORTED_CHANNELS}
 
 
 @app.get("/agents")
-def agents(config_path: str = "config/product.yaml"):
+def agents(config_path: str = "config/product.yaml", role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
     a = AgentService(config_path)
     return {"agents": a.registry.list()}
 
 
 @app.get("/workflows")
-def workflows():
+def workflows(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
     return {"workflows": list_workflows()}
 
 
 @app.post("/workflows/run")
-def run_workflow(req: RunWorkflowRequest):
+def run_workflow(req: RunWorkflowRequest, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
     env = os.environ.copy()
     env["PYTHONPATH"] = str(Path("../agentic-automation-framework-python").resolve())
     cmd = [sys.executable, "../agentic-automation-framework-python/main.py", "--workflow", req.workflow_path]
     if req.notify:
         cmd.append("--notify")
     p = subprocess.run(cmd, capture_output=True, text=True, env=env)
-    return {
+    payload = {
         "ok": p.returncode == 0,
         "returncode": p.returncode,
         "stdout_tail": p.stdout[-1200:],
         "stderr_tail": p.stderr[-1200:],
     }
+    logbus.push("info", "workflow_run", {"workflow": req.workflow_path, "ok": payload["ok"]})
+    return payload
 
 
 @app.post("/run")
-def run_all(config_path: str = "config/product.yaml"):
+def run_all(config_path: str = "config/product.yaml", role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
     cfg = load_config(config_path)
     findings, report = run_product_suite(cfg)
-    return {
+    payload = {
         "status": "PASS" if report["counts"]["fail"] == 0 and report["counts"]["error"] == 0 else "FAIL",
         "counts": report["counts"],
         "reports": report,
         "findings": [f.__dict__ for f in findings],
     }
+    logbus.push("info", "suite_run", {"status": payload["status"], "counts": payload["counts"]})
+    return payload
 
 
 @app.post("/agent/run")
-def agent_run(req: RunAgentRequest):
+def agent_run(req: RunAgentRequest, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
     agent = AgentService(config_path=req.config_path)
     if req.agent:
         r = agent.run_one_agent(req.agent)
         if not r:
             return {"ok": False, "error": f"Unknown agent: {req.agent}"}
+        logbus.push("info", "agent_run", {"agent": req.agent, "status": r.status})
         return {"ok": True, "result": r.__dict__}
-    return {"ok": True, "result": agent.run_all_agents()}
+    all_result = agent.run_all_agents()
+    logbus.push("info", "agent_run_all", {"status": all_result.get("status")})
+    return {"ok": True, "result": all_result}
 
 
 @app.post("/agent/message")
-def agent_message(req: AgentMessageRequest):
+def agent_message(req: AgentMessageRequest, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
     agent = AgentService(config_path=req.config_path)
     response = agent.handle(
         ChannelMessage(
@@ -113,6 +148,7 @@ def agent_message(req: AgentMessageRequest):
             raw=req.raw,
         )
     )
+    logbus.push("info", "agent_message", {"channel": req.channel, "text": req.text[:120]})
     return {"ok": True, "response": response}
 
 
@@ -124,4 +160,26 @@ def webhook(channel: str, payload: dict):
 
     agent = AgentService(config_path="config/product.yaml")
     response = agent.handle(ChannelMessage(channel=channel, user_id=user_id, chat_id=chat_id, text=text, raw=payload))
+    logbus.push("info", "webhook_message", {"channel": channel, "text": text[:120]})
     return {"ok": True, "channel": channel, "response": response}
+
+
+@app.get("/tenants")
+def tenants(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"tenants": list_tenants()}
+
+
+@app.get("/tenants/{tenant_id}/channels")
+def tenant_channels(tenant_id: str, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    data = get_tenant(tenant_id)
+    return {"tenant_id": tenant_id, "config": data or {"channels": {}}}
+
+
+@app.put("/tenants/{tenant_id}/channels")
+def tenant_channels_upsert(tenant_id: str, payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    updated = upsert_tenant(tenant_id, payload)
+    logbus.push("info", "tenant_channels_upsert", {"tenant_id": tenant_id})
+    return {"ok": True, "tenant_id": tenant_id, "config": updated}

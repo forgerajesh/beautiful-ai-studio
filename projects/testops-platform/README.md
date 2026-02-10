@@ -60,6 +60,23 @@ This React control center integrates:
 - tools/agents execution
 - Playwright workflow listing + run
 - agent command messaging
+- RBAC API key auth controls
+- real-time logs via WebSocket
+- multi-tenant channel configuration UI
+
+## RBAC
+Send header `X-API-Key`:
+- `admin-token` (full access)
+- `operator-token` (run + update)
+- `viewer-token` (read + message)
+
+## Realtime logs
+- WebSocket endpoint: `ws://localhost:8090/ws/logs`
+
+## Multi-tenant channels
+- `GET /tenants`
+- `GET /tenants/{tenant_id}/channels`
+- `PUT /tenants/{tenant_id}/channels`
 
 Endpoints:
 - `GET /health`

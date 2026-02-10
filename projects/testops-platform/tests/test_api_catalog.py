@@ -4,6 +4,7 @@ from app.api.server import app
 
 def test_catalog_endpoints():
     c = TestClient(app)
-    assert c.get('/channels').status_code == 200
-    assert c.get('/agents').status_code == 200
-    assert c.get('/workflows').status_code == 200
+    h = {"X-API-Key": "viewer-token"}
+    assert c.get('/channels', headers=h).status_code == 200
+    assert c.get('/agents', headers=h).status_code == 200
+    assert c.get('/workflows', headers=h).status_code == 200
