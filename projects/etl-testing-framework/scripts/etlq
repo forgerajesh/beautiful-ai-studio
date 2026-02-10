@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
+PYTHONPATH=. python -m etlq.cli "$@"

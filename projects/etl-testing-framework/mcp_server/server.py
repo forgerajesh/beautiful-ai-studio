@@ -55,7 +55,7 @@ def run_etl_tests(mark_expr: Optional[str] = None, email_mode: str = "never") ->
 
     should_send = (email_mode == "always") or (email_mode == "on_fail" and not result.get("ok"))
     if should_send:
-        email_res = _run(["python", "scripts/send_email_report.py"])
+        email_res = _run(["python3", "scripts/send_email_report.py"])
         result["email"] = email_res
 
     return json.dumps(result, indent=2)
@@ -64,7 +64,7 @@ def run_etl_tests(mark_expr: Optional[str] = None, email_mode: str = "never") ->
 @mcp.tool()
 def generate_tests_from_metadata() -> str:
     """Generate tests from schema + lineage metadata."""
-    cmd = ["python", "-m", "agent.generate_tests"]
+    cmd = ["python3", "-m", "agent.generate_tests"]
     result = _run(cmd)
     result["generated_yaml"] = str(ROOT / "agent" / "generated" / "generated_tests.yaml")
     return json.dumps(result, indent=2)
@@ -73,7 +73,7 @@ def generate_tests_from_metadata() -> str:
 @mcp.tool()
 def run_ai_agent(request: str) -> str:
     """Run LangGraph AI ETL agent with a request string."""
-    cmd = ["python", "-m", "agent.run_agent", "--request", request]
+    cmd = ["python3", "-m", "agent.run_agent", "--request", request]
     result = _run(cmd)
     result["ai_notes"] = str(ROOT / "reports" / "ai_remediation.md")
     result["junit_path"] = str(ROOT / "reports" / "junit.xml")
@@ -84,7 +84,7 @@ def run_ai_agent(request: str) -> str:
 @mcp.tool()
 def send_results_email() -> str:
     """Send ETL test results to configured Gmail/SMTP recipient."""
-    cmd = ["python", "scripts/send_email_report.py"]
+    cmd = ["python3", "scripts/send_email_report.py"]
     result = _run(cmd)
     return json.dumps(result, indent=2)
 

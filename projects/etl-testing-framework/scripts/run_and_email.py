@@ -19,9 +19,22 @@ def send_email() -> int:
     return p.returncode
 
 
+def maybe_generate_ai_notes(rc: int):
+    if rc == 0:
+        return
+    # Optional best-effort AI remediation generation
+    try:
+        subprocess.run([
+            "python3", "-m", "agent.run_agent", "--request", "analyze latest failed ETL tests and provide remediation"
+        ], cwd=ROOT, check=False)
+    except Exception:
+        pass
+
+
 def main():
     mode = os.getenv("EMAIL_MODE", "on_fail").lower()  # on_fail | always | never
     rc = run_tests()
+    maybe_generate_ai_notes(rc)
 
     should_send = (mode == "always") or (mode == "on_fail" and rc != 0)
     if mode == "never":

@@ -167,3 +167,21 @@ cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
 export EMAIL_MODE=on_fail   # on_fail | always | never
 python scripts/run_and_email.py
 ```
+
+## ETLQ (Insanely Simple UX)
+Single-command experience:
+
+```bash
+cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
+PYTHONPATH=. python -m etlq.cli run --email-mode on_fail
+# or
+./scripts/etlq run --email-mode on_fail
+```
+
+What it does in one command:
+1. Runs tests
+2. Generates AI remediation notes on failure (best-effort)
+3. Sends email based on mode
+4. Builds `reports/executive_report.html`
+
+Output summary is printed as JSON.
