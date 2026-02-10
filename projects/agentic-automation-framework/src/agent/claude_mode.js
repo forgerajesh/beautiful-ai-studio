@@ -3,7 +3,7 @@ import path from "path";
 import { generateWorkflow, saveWorkflow } from "./planner.js";
 import { executeWorkflowFile } from "./engine.js";
 import { appendHistory, buildDashboard } from "./history.js";
-import { recentFailureContext, recordFailure } from "./memory.js";
+import { relevantFailureContext, recordFailure } from "./memory.js";
 
 function persistRun(result) {
   appendHistory({
@@ -27,11 +27,11 @@ export async function runClaudeLikeAgent({
 
   const trace = [];
   let lastResult = null;
-  const recentFailures = recentFailureContext(5);
+  const recentFailures = relevantFailureContext(goal, 5);
 
   for (let i = 1; i <= maxIterations; i++) {
     const memoryBlock = recentFailures.length
-      ? `\nRecent failures context:\n${recentFailures.map((f, idx) => `${idx + 1}) goal=${f.goal} | error=${f.error}`).join("\n")}`
+      ? `\nRelevant prior failures:\n${recentFailures.map((f, idx) => `${idx + 1}) score=${(f.score ?? 0).toFixed(2)} | goal=${f.goal} | error=${f.error}`).join("\n")}`
       : "";
 
     const prompt =

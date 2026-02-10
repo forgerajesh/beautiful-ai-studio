@@ -8,7 +8,7 @@ import { generateWorkflow, saveWorkflow } from "./agent/planner.js";
 import { appendHistory, buildDashboard } from "./agent/history.js";
 import { RunQueue } from "./agent/queue.js";
 import { runClaudeLikeAgent } from "./agent/claude_mode.js";
-import { recentFailureContext } from "./agent/memory.js";
+import { recentFailureContext, relevantFailureContext } from "./agent/memory.js";
 
 function arg(name) {
   const i = process.argv.indexOf(name);
@@ -127,10 +127,11 @@ async function runTelegramListener() {
       }
 
       if (cmd.text.startsWith("/memory")) {
-        const mem = recentFailureContext(5);
+        const hintGoal = cmd.text.replace("/memory", "").trim();
+        const mem = hintGoal ? relevantFailureContext(hintGoal, 5) : recentFailureContext(5);
         const txt = mem.length
-          ? mem.map((m, i) => `${i + 1}. ${m.goal} -> ${m.error}`).join("\n")
-          : "No recent failure memory.";
+          ? mem.map((m, i) => `${i + 1}. ${(m.score ?? 0).toFixed ? `score=${(m.score ?? 0).toFixed(2)} | ` : ""}${m.goal} -> ${m.error}`).join("\n")
+          : "No matching failure memory.";
         await sendTelegramMessage({ token: env.telegram.token, chatId: cmd.chatId, text: txt });
         continue;
       }

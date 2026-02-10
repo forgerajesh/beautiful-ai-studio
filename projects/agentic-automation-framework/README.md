@@ -80,7 +80,8 @@ Supported Telegram commands:
 - `/run <workflow-path>`
 - `/plan <natural language prompt>`
 - `/ask <goal>`
-- `/memory` (show recent failure memory used by agent)
+- `/memory` (show recent failures)
+- `/memory <goal text>` (show top relevant failures for that goal)
 - `/dashboard`
 
 Example:
