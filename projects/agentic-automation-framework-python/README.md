@@ -44,6 +44,19 @@ python main.py --telegram-listen
 python main.py --dashboard
 ```
 
+## REST API wrapper (FastAPI)
+Start API server:
+```bash
+uvicorn api.server:app --host 0.0.0.0 --port 8080
+```
+
+Endpoints:
+- `GET /health`
+- `POST /run` `{ "workflow_path": "./examples/saucedemo-login.json", "notify": false }`
+- `POST /plan` `{ "prompt": "login to saucedemo and verify inventory" }`
+- `POST /ask` `{ "goal": "login to saucedemo and verify inventory page", "notify": false }`
+- `GET /dashboard`
+
 ## Notes
 - If `OPENAI_API_KEY` is not set, planner uses deterministic fallback.
 - Semantic memory requires OpenAI embeddings access.
