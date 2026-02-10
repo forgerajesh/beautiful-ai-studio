@@ -160,3 +160,10 @@ Attachments sent (if present):
 - `reports/ai_remediation.md`
 
 > Note: For Gmail, use **App Password**, not your normal account password.
+
+### Run tests + auto-email (wired)
+```bash
+cd /home/vnc/.openclaw/workspace/projects/etl-testing-framework
+export EMAIL_MODE=on_fail   # on_fail | always | never
+python scripts/run_and_email.py
+```

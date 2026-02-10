@@ -41,8 +41,8 @@ def health() -> str:
 
 
 @mcp.tool()
-def run_etl_tests(mark_expr: Optional[str] = None) -> str:
-    """Run pytest ETL tests and generate JUnit report."""
+def run_etl_tests(mark_expr: Optional[str] = None, email_mode: str = "never") -> str:
+    """Run pytest ETL tests and optionally send email report (never|on_fail|always)."""
     reports = ROOT / "reports"
     reports.mkdir(exist_ok=True)
 
@@ -52,6 +52,12 @@ def run_etl_tests(mark_expr: Optional[str] = None) -> str:
 
     result = _run(cmd)
     result["junit_path"] = str(ROOT / "reports" / "junit.xml")
+
+    should_send = (email_mode == "always") or (email_mode == "on_fail" and not result.get("ok"))
+    if should_send:
+        email_res = _run(["python", "scripts/send_email_report.py"])
+        result["email"] = email_res
+
     return json.dumps(result, indent=2)
 
 
