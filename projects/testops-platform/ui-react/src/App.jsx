@@ -4,6 +4,7 @@ import {
   getChannels, getAgents, getWorkflows, runSuite, runAllAgents, runOneAgent, runWorkflow,
   sendAgentMessage, getTenants, getTenantChannels, saveTenantChannels, setApiKey,
   createJiraIssue, createTestRailRun, generateArtifacts,
+  getWave3Executive, listWave3Checkpoints, approveWave3Checkpoint,
 } from './api'
 
 export default function App() {
@@ -21,6 +22,8 @@ export default function App() {
   const [jiraDesc, setJiraDesc] = useState('Quality issue found in automated execution')
   const [trRunName, setTrRunName] = useState('TestOps Automated Run')
   const [artifactProduct, setArtifactProduct] = useState('TestOps Platform')
+  const [execSummary, setExecSummary] = useState(null)
+  const [hitlQueue, setHitlQueue] = useState([])
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -33,9 +36,13 @@ export default function App() {
       const a = await getAgents()
       const w = await getWorkflows()
       const t = await getTenants()
+      const ex = await getWave3Executive()
+      const cp = await listWave3Checkpoints()
       setChannels(c.supported || [])
       setAgents(a.agents || [])
       setWorkflows(w.workflows || [])
+      setExecSummary(ex)
+      setHitlQueue(cp.checkpoints || [])
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -92,6 +99,20 @@ export default function App() {
   const onGenerateArtifacts = async () => {
     const res = await generateArtifacts({ product_name: artifactProduct })
     setOutput(JSON.stringify(res, null, 2))
+  }
+
+  const refreshExecutive = async () => {
+    const ex = await getWave3Executive()
+    const cp = await listWave3Checkpoints()
+    setExecSummary(ex)
+    setHitlQueue(cp.checkpoints || [])
+    setOutput('Wave3 executive dashboard refreshed')
+  }
+
+  const approveCheckpoint = async (id) => {
+    const res = await approveWave3Checkpoint(id, 'ui-approver')
+    setOutput(JSON.stringify(res, null, 2))
+    await refreshExecutive()
   }
 
   const updateChannelField = (name, key, value) => {
@@ -190,6 +211,31 @@ export default function App() {
             </Card>
           ))}
         </div>
+      </Card>
+
+      <Card title="Wave3 Executive Dashboard">
+        <button onClick={refreshExecutive}>Refresh Executive Summary</button>
+        {execSummary?.kpi ? (
+          <div className="grid" style={{ marginTop: 10 }}>
+            <Card title="Pass Rate"><h2>{Math.round((execSummary.kpi.pass_rate || 0) * 100)}%</h2></Card>
+            <Card title="Total"><h2>{execSummary.kpi.total}</h2></Card>
+            <Card title="Fail"><h2>{execSummary.kpi.fail}</h2></Card>
+            <Card title="Error"><h2>{execSummary.kpi.error}</h2></Card>
+          </div>
+        ) : <div style={{ marginTop: 8 }}>No executive summary yet. Run suite then refresh.</div>}
+
+        <h4 style={{ marginTop: 14 }}>Domain Breakdown</h4>
+        <pre>{JSON.stringify(execSummary?.domains || {}, null, 2)}</pre>
+
+        <h4>HITL Queue</h4>
+        <ul>
+          {(hitlQueue || []).slice(-20).reverse().map((c) => (
+            <li key={c.id}>
+              <code>{c.id}</code> | {c.title} | status={c.status}
+              {c.status !== 'APPROVED' && <button onClick={() => approveCheckpoint(c.id)}>Approve</button>}
+            </li>
+          ))}
+        </ul>
       </Card>
 
       <Card title="Realtime Logs (WebSocket)">

@@ -43,3 +43,11 @@ export const generateArtifacts = (payload) => api('/artifacts/generate', {
   method: 'POST',
   body: JSON.stringify(payload),
 })
+
+export const getWave3Executive = () => api('/wave3/analytics/executive')
+export const listWave3Checkpoints = () => api('/wave3/remediation/checkpoint/list')
+export const approveWave3Checkpoint = (checkpoint_id, actor = 'ui-approver') =>
+  api('/wave3/remediation/checkpoint/approve', {
+    method: 'POST',
+    body: JSON.stringify({ checkpoint_id, actor }),
+  })
