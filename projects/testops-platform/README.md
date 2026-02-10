@@ -83,6 +83,15 @@ Send header `X-API-Key`:
 - `POST /worldclass/run-goal` → execute planned agents + release decision
 - `GET /worldclass/maturity` → maturity score/tier
 
+## Enterprise-grade v3 endpoints
+- `POST /v3/distributed/run` → distributed multi-agent execution (threaded workers)
+- `GET /v3/telemetry` → runtime metrics snapshot
+- `POST /v3/remediation/propose` → governed remediation proposals
+- `POST /v3/remediation/apply` → approval-gated remediation apply
+
+Artifacts:
+- benchmark history: `reports/v3-benchmarks.json`
+
 Endpoints:
 - `GET /health`
 - `GET /` (web UI dashboard)

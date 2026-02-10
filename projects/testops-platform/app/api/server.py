@@ -21,6 +21,10 @@ from app.channels.config.store import list_tenants, get_tenant, upsert_tenant
 from app.worldclass.strategy_planner import plan_agents_from_goal
 from app.worldclass.policy_engine import evaluate_release
 from app.worldclass.maturity import compute_maturity
+from app.v3.queue.executor import run_distributed
+from app.v3.observability.telemetry import snapshot as telemetry_snapshot, instrument
+from app.v3.eval.harness import evaluate_run, persist_benchmark
+from app.v3.remediation.governance import propose_remediation, apply_remediation
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -234,3 +238,48 @@ def worldclass_maturity(role: str = Depends(get_role)):
     p = Path("reports/summary.json")
     findings = json.loads(p.read_text()) if p.exists() else []
     return compute_maturity(findings, enabled_channels=11, enabled_agents=5)
+
+
+@instrument("v3_run_distributed")
+def _run_one_agent_task(config_path: str, agent_name: str):
+    svc = AgentService(config_path=config_path)
+    r = svc.run_one_agent(agent_name)
+    return r.__dict__ if r else {"agent": agent_name, "status": "ERROR", "summary": "unknown agent", "details": {}}
+
+
+@app.post("/v3/distributed/run")
+def v3_distributed_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    config_path = str(payload.get("config_path", "config/product.yaml"))
+    agents = payload.get("agents") or ["playwright", "api", "non_functional", "security", "accessibility"]
+    tasks = [(_run_one_agent_task, (config_path, a), {}) for a in agents]
+    results = run_distributed(tasks, max_workers=int(payload.get("max_workers", 4)))
+
+    normalized = [x.get("result") for x in results if x.get("ok")]
+    findings_like = [{"status": r.get("status"), "severity": "critical" if r.get("agent") == "security" and r.get("status") in ("FAIL", "ERROR") else "high"} for r in normalized]
+    decision = evaluate_release(findings_like)
+    eval_score = evaluate_run({"counts": {"total": len(normalized), "pass": len([r for r in normalized if r.get('status') == 'PASS']), "fail": len([r for r in normalized if r.get('status') == 'FAIL']), "error": len([r for r in normalized if r.get('status') == 'ERROR'])}})
+    bench_file = persist_benchmark({"decision": decision.__dict__, "evaluation": eval_score, "agents": agents})
+
+    return {"ok": True, "results": results, "release_decision": decision.__dict__, "evaluation": eval_score, "benchmark_file": bench_file}
+
+
+@app.get("/v3/telemetry")
+def v3_telemetry(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return telemetry_snapshot()
+
+
+@app.post("/v3/remediation/propose")
+def v3_remediation_propose(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    findings = payload.get("findings") or []
+    return {"actions": propose_remediation(findings)}
+
+
+@app.post("/v3/remediation/apply")
+def v3_remediation_apply(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    actions = payload.get("actions") or []
+    approved = bool(payload.get("approved", False))
+    return apply_remediation(actions, approved=approved)
