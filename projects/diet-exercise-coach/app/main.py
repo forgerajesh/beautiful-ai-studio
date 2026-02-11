@@ -256,6 +256,85 @@ def weekly_summary(user_id: int):
     }
 
 
+def adherence_streak(user_id: int) -> int:
+    c = conn()
+    rows = c.execute(
+        "select diet_adherence, steps from checkins where user_id=? order by date desc, id desc limit 60",
+        (user_id,),
+    ).fetchall()
+    c.close()
+
+    streak = 0
+    for r in rows:
+        ok = int(r["diet_adherence"] or 0) >= 70 and int(r["steps"] or 0) >= 7000
+        if not ok:
+            break
+        streak += 1
+    return streak
+
+
+def advanced_progress(user_id: int):
+    c = conn()
+    rows = c.execute(
+        "select date, weight_kg, steps, diet_adherence, workout_done from checkins where user_id=? order by date desc, id desc limit 14",
+        (user_id,),
+    ).fetchall()
+    c.close()
+
+    if not rows:
+        return {
+            "streak_days": 0,
+            "plateau": False,
+            "recommendation": "Log your first 3-4 check-ins to unlock adaptive guidance.",
+        }
+
+    streak = adherence_streak(user_id)
+    weights = [r["weight_kg"] for r in rows if r["weight_kg"] is not None]
+    plateau = False
+    if len(weights) >= 10:
+        window = weights[:10]
+        plateau = abs(window[0] - window[-1]) <= 0.3
+
+    avg_adherence = int(mean([r["diet_adherence"] for r in rows if r["diet_adherence"] is not None]))
+    avg_steps = int(mean([r["steps"] for r in rows if r["steps"] is not None]))
+
+    if plateau and avg_adherence >= 75:
+        recommendation = (
+            "Plateau detected: keep protein high, add 2,000 daily steps, and run a 4-day calorie-tight phase "
+            "(or one high-carb refeed day if energy is low)."
+        )
+    elif avg_adherence < 70:
+        recommendation = "Primary lever: increase adherence to 80%+ this week. Keep meals simple and pre-planned."
+    elif avg_steps < 8000:
+        recommendation = "Increase non-exercise activity: aim 8k-10k steps/day before changing calories."
+    else:
+        recommendation = "Progress signal is healthy. Stay consistent and reassess in 7 days."
+
+    return {
+        "streak_days": streak,
+        "plateau": plateau,
+        "recommendation": recommendation,
+    }
+
+
+def build_daily_nudge(user: sqlite3.Row, weekly: dict | None, adv: dict):
+    first = user["name"].split()[0]
+    adherence = weekly.get("avg_adherence") if weekly else None
+    steps = weekly.get("avg_steps") if weekly else None
+    trend = weekly.get("weight_change_kg") if weekly else None
+
+    trend_text = "stable"
+    if trend is not None:
+        trend_text = "down" if trend < 0 else "up" if trend > 0 else "stable"
+
+    return (
+        f"🔥 {first}, quick coach check-in: streak {adv['streak_days']} day(s). "
+        f"7-day adherence: {adherence if adherence is not None else '—'}%, "
+        f"steps: {steps if steps is not None else '—'}, trend: {trend_text}. "
+        f"Today’s focus: {adv['recommendation']}"
+    )
+
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -353,6 +432,9 @@ def dashboard(user_id: int, request: Request):
     checkins = c.execute("select * from checkins where user_id=? order by id desc limit 30", (user_id,)).fetchall()
     c.close()
 
+    weekly = weekly_summary(user_id)
+    adv = advanced_progress(user_id)
+
     return templates.TemplateResponse(
         "dashboard.html",
         {
@@ -360,7 +442,9 @@ def dashboard(user_id: int, request: Request):
             "user": user,
             "plan": plan,
             "checkins": checkins,
-            "analytics": weekly_summary(user_id),
+            "analytics": weekly,
+            "advanced": adv,
+            "nudge_preview": build_daily_nudge(user, weekly, adv),
             "me": current_user(request),
         },
     )
@@ -495,4 +579,25 @@ def api_progress(user_id: int):
 
 @app.get("/api/analytics/weekly/{user_id}")
 def api_weekly_analytics(user_id: int):
-    return {"ok": True, "weekly": weekly_summary(user_id)}
+    return {"ok": True, "weekly": weekly_summary(user_id), "advanced": advanced_progress(user_id)}
+
+
+@app.get("/api/nudge/{user_id}")
+def api_nudge(user_id: int):
+    c = conn()
+    user = c.execute("select * from users where id=?", (user_id,)).fetchone()
+    c.close()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    weekly = weekly_summary(user_id)
+    adv = advanced_progress(user_id)
+    msg = build_daily_nudge(user, weekly, adv)
+    return {
+        "ok": True,
+        "message": msg,
+        "channels": {
+            "telegram": {"status": "ready_for_integration", "payload_preview": msg},
+            "whatsapp": {"status": "ready_for_integration", "payload_preview": msg},
+        },
+    }

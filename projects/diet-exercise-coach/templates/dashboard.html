@@ -38,6 +38,8 @@
       <div class='kpi'><div class='muted'>Avg steps (7d)</div><div class='v'>{{analytics.avg_steps if analytics and analytics.avg_steps else "—"}}</div></div>
       <div class='kpi'><div class='muted'>Diet adherence (7d)</div><div class='v'>{{analytics.avg_adherence ~ "%" if analytics and analytics.avg_adherence else "—"}}</div></div>
       <div class='kpi'><div class='muted'>Weight change (7d)</div><div class='v'>{{analytics.weight_change_kg ~ "kg" if analytics and analytics.weight_change_kg is not none else "—"}}</div></div>
+      <div class='kpi'><div class='muted'>Habit streak</div><div class='v'>{{advanced.streak_days if advanced else 0}}d</div></div>
+      <div class='kpi'><div class='muted'>Plateau status</div><div class='v'>{{"Yes" if advanced and advanced.plateau else "No"}}</div></div>
     </div>
 
     <div class='grid'>
@@ -68,6 +70,13 @@
           <button type='submit'>Save Check-in</button>
         </form>
       </div>
+    </div>
+
+    <div class='card' style='margin-top:14px'>
+      <h3>Adaptive Coach Guidance</h3>
+      <p><b>Recommendation:</b> {{advanced.recommendation if advanced else "Keep logging data for better guidance."}}</p>
+      <p><b>Daily Nudge Preview (Telegram / WhatsApp):</b><br>{{nudge_preview}}</p>
+      <p class='muted'>Programmatic nudge API: <code>/api/nudge/{{user.id}}</code></p>
     </div>
 
     <div class='card' style='margin-top:14px'>

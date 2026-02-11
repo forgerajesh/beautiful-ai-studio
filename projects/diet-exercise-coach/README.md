@@ -6,6 +6,8 @@ A practical weight-loss coaching app where users can:
 - generate personalized diet/workout plans
 - log daily check-ins with motivational coach feedback
 - track weekly analytics (steps, adherence, weight trend)
+- monitor habit streaks + plateau detection + adaptive recommendations
+- generate daily motivational nudge text for Telegram/WhatsApp integration
 
 ## Run
 ```bash
@@ -24,6 +26,7 @@ Open: `http://localhost:8077`
 - `POST /api/checkin/{user_id}`
 - `GET /api/progress/{user_id}`
 - `GET /api/analytics/weekly/{user_id}`
+- `GET /api/nudge/{user_id}`
 
 ## Product upgrades included
 - Session-based auth for web app (`/login`, `/logout`)
