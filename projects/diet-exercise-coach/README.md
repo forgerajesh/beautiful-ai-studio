@@ -1,10 +1,11 @@
 # Diet & Exercise Coach App
 
 A practical weight-loss coaching app where users can:
-- register with body/goal inputs
-- generate personalized diet + workout plan
-- log daily check-ins
-- track progress and receive motivational comments
+- register + login securely
+- provide body stats, timeline, and preference inputs
+- generate personalized diet/workout plans
+- log daily check-ins with motivational coach feedback
+- track weekly analytics (steps, adherence, weight trend)
 
 ## Run
 ```bash
@@ -22,3 +23,10 @@ Open: `http://localhost:8077`
 - `POST /api/plan/generate/{user_id}`
 - `POST /api/checkin/{user_id}`
 - `GET /api/progress/{user_id}`
+- `GET /api/analytics/weekly/{user_id}`
+
+## Product upgrades included
+- Session-based auth for web app (`/login`, `/logout`)
+- Personalized planning inputs: gender, timeline, workout days, diet preference
+- Weekly analytics engine in dashboard + API
+- Upgraded premium UI (clean, responsive, modern cards/KPIs)

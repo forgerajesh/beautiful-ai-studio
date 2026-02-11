@@ -1,27 +1,97 @@
 <!doctype html>
-<html><head><meta charset='utf-8'><title>Diet & Exercise Coach</title>
-<style>body{font-family:Arial;margin:30px;background:#f5f7fb}.card{background:#fff;padding:16px;border-radius:12px;border:1px solid #dbe2ee;max-width:980px}input,select{padding:8px;margin:6px;border:1px solid #cbd5e1;border-radius:8px}button{padding:10px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}.users a{display:block;padding:6px 0}</style></head>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Diet & Exercise Coach</title>
+  <style>
+    :root{--bg:#f4f7ff;--card:#ffffff;--text:#0f172a;--muted:#64748b;--line:#dbe3f3;--brand:#2563eb;--brand2:#1d4ed8}
+    *{box-sizing:border-box}
+    body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:linear-gradient(180deg,#eef3ff,#f8fbff);color:var(--text)}
+    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+    .hero{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:0 10px 30px rgba(30,64,175,.08)}
+    .hero h1{margin:0 0 8px;font-size:30px}
+    .hero p{margin:0;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+    .card h2{margin:0 0 12px;font-size:20px}
+    .f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .f.full{grid-template-columns:1fr}
+    input,select{width:100%;padding:11px;border:1px solid #cfdaf0;border-radius:10px;background:white}
+    button{background:linear-gradient(180deg,var(--brand),var(--brand2));color:#fff;border:0;border-radius:10px;padding:11px 14px;font-weight:600;cursor:pointer}
+    .users a{display:block;padding:9px 10px;border:1px solid #e4ecfb;border-radius:10px;color:#0f172a;text-decoration:none;margin-bottom:8px}
+    .users a:hover{background:#f6f9ff}
+    .meta{font-size:13px;color:var(--muted)}
+    .topright{float:right;font-size:14px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}.f{grid-template-columns:1fr}}
+  </style>
+</head>
 <body>
-  <div class='card'>
-    <h1>Weight Loss Coach (Diet + Exercise)</h1>
-    <p>Register and get personalized daily plan + progress tracking + motivating coach feedback.</p>
-    <form method='post' action='/register'>
-      <input name='name' placeholder='Name' required>
-      <input name='email' placeholder='Email' required>
-      <input name='age' type='number' placeholder='Age' value='30' required>
-      <input name='height_cm' type='number' step='0.1' placeholder='Height (cm)' value='170' required>
-      <input name='weight_kg' type='number' step='0.1' placeholder='Current Weight (kg)' value='102' required>
-      <input name='goal_weight_kg' type='number' step='0.1' placeholder='Goal Weight (kg)' value='85' required>
-      <select name='activity_level'><option>low</option><option selected>moderate</option><option>high</option></select>
-      <select name='diet_pref'><option>balanced</option><option>veg</option><option>low_carb</option><option>high_protein</option></select>
-      <button type='submit'>Create Profile</button>
-    </form>
-    <hr>
-    <h3>Existing Users</h3>
-    <div class='users'>
-      {% for u in users %}
-      <a href='/dashboard/{{u.id}}'>{{u.name}} ({{u.email}}) - {{u.weight_kg}}kg → {{u.goal_weight_kg}}kg</a>
-      {% endfor %}
+  <div class='wrap'>
+    <div class='hero'>
+      <div class='topright'>
+        {% if me %}
+          Logged in as <b>{{me.name}}</b> · <a href='/dashboard/{{me.id}}'>Dashboard</a> · <a href='/logout'>Logout</a>
+        {% else %}
+          Not logged in
+        {% endif %}
+      </div>
+      <h1>Weight Loss Coach</h1>
+      <p>Personalized diet + workout plans, daily tracking, and motivational guidance that adapts to your progress.</p>
+    </div>
+
+    <div class='grid'>
+      <div class='card'>
+        <h2>Create Account</h2>
+        <form method='post' action='/register'>
+          <div class='f'>
+            <input name='name' placeholder='Name' required>
+            <input name='email' placeholder='Email' type='email' required>
+          </div>
+          <div class='f'>
+            <input name='password' type='password' placeholder='Password' required>
+            <input name='age' type='number' placeholder='Age' value='30' required>
+          </div>
+          <div class='f'>
+            <select name='gender'><option value='male'>male</option><option value='female'>female</option></select>
+            <input name='height_cm' type='number' step='0.1' placeholder='Height (cm)' value='170' required>
+          </div>
+          <div class='f'>
+            <input name='weight_kg' type='number' step='0.1' placeholder='Current Weight (kg)' value='102' required>
+            <input name='goal_weight_kg' type='number' step='0.1' placeholder='Goal Weight (kg)' value='85' required>
+          </div>
+          <div class='f'>
+            <input name='target_weeks' type='number' min='4' max='52' value='16' placeholder='Target weeks'>
+            <input name='workout_days' type='number' min='2' max='7' value='5' placeholder='Workout days/week'>
+          </div>
+          <div class='f'>
+            <select name='activity_level'><option>low</option><option selected>moderate</option><option>high</option></select>
+            <select name='diet_pref'><option>balanced</option><option>veg</option><option>low_carb</option><option>high_protein</option></select>
+          </div>
+          <div class='f full'><button type='submit'>Create Profile</button></div>
+        </form>
+      </div>
+
+      <div class='card'>
+        <h2>Login</h2>
+        <form method='post' action='/login'>
+          <div class='f full'><input name='email' type='email' placeholder='Email' required></div>
+          <div class='f full'><input name='password' type='password' placeholder='Password' required></div>
+          <div class='f full'><button type='submit'>Login</button></div>
+        </form>
+
+        <hr style='border:none;border-top:1px solid var(--line);margin:16px 0'>
+        <h2 style='font-size:18px'>Recent Profiles</h2>
+        <div class='users'>
+          {% for u in users %}
+          <a href='/dashboard/{{u.id}}'>
+            <b>{{u.name}}</b><br>
+            <span class='meta'>{{u.email}} · {{u.weight_kg}}kg → {{u.goal_weight_kg}}kg</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
     </div>
   </div>
-</body></html>
+</body>
+</html>
