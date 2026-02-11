@@ -8,6 +8,7 @@ A practical weight-loss coaching app where users can:
 - track weekly analytics (steps, adherence, weight trend)
 - monitor habit streaks + plateau detection + adaptive recommendations
 - generate daily motivational nudge text for Telegram/WhatsApp integration
+- food library + meal swap suggestions + weekly meal planner + shopping list
 
 ## Run
 ```bash
@@ -27,6 +28,9 @@ Open: `http://localhost:8077`
 - `GET /api/progress/{user_id}`
 - `GET /api/analytics/weekly/{user_id}`
 - `GET /api/nudge/{user_id}`
+- `GET /api/food/library/{user_id}`
+- `POST /api/meal/swap/{user_id}`
+- `GET /api/planner/weekly/{user_id}`
 
 ## Product upgrades included
 - Session-based auth for web app (`/login`, `/logout`)

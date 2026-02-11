@@ -80,6 +80,22 @@
     </div>
 
     <div class='card' style='margin-top:14px'>
+      <h3>Weekly Meal Planner + Shopping List</h3>
+      <p class='muted'>Food library API: <code>/api/food/library/{{user.id}}</code> · Meal swap API: <code>POST /api/meal/swap/{{user.id}}</code></p>
+      <table>
+        <thead><tr><th>Day</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th><th>Snack</th></tr></thead>
+        <tbody>
+          {% for d in planner_preview.days %}
+          <tr>
+            <td>{{d.day}}</td><td>{{d.breakfast}}</td><td>{{d.lunch}}</td><td>{{d.dinner}}</td><td>{{d.snack}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p><b>Shopping List:</b> {{ planner_preview.shopping_list | join(', ') }}</p>
+    </div>
+
+    <div class='card' style='margin-top:14px'>
       <h3>Progress Log (latest first)</h3>
       <table>
         <thead><tr><th>Date</th><th>Weight</th><th>Steps</th><th>Adherence</th><th>Comment</th></tr></thead>

@@ -335,6 +335,51 @@ def build_daily_nudge(user: sqlite3.Row, weekly: dict | None, adv: dict):
     )
 
 
+def food_library(diet_pref: str):
+    diet_pref = (diet_pref or "balanced").lower()
+    base = {
+        "protein": ["chicken breast", "eggs", "paneer", "tofu", "fish", "greek yogurt"],
+        "carbs": ["oats", "brown rice", "quinoa", "roti", "sweet potato"],
+        "fats": ["almonds", "walnuts", "olive oil", "peanut butter", "avocado"],
+        "veggies": ["spinach", "broccoli", "cucumber", "tomato", "bell peppers"],
+    }
+    if diet_pref == "veg":
+        base["protein"] = ["tofu", "paneer", "soy chunks", "lentils", "greek yogurt", "chickpeas"]
+    if diet_pref == "low_carb":
+        base["carbs"] = ["quinoa", "sweet potato", "berries", "leafy veggies"]
+    if diet_pref == "high_protein":
+        base["protein"].extend(["whey isolate", "lean turkey"])
+    return base
+
+
+def suggest_swaps(disliked: list[str], diet_pref: str):
+    catalog = food_library(diet_pref)
+    swaps = {}
+    flat = catalog["protein"] + catalog["carbs"] + catalog["fats"] + catalog["veggies"]
+    for item in disliked:
+        item_l = item.lower().strip()
+        replacement = next((x for x in flat if x.lower() != item_l), "tofu")
+        swaps[item] = replacement
+    return swaps
+
+
+def weekly_meal_planner(user: sqlite3.Row):
+    diet_pref = (user["diet_pref"] or "balanced").lower()
+    lib = food_library(diet_pref)
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    plan = []
+    for i, d in enumerate(days):
+        breakfast = f"{lib['protein'][i % len(lib['protein'])]} + {lib['carbs'][i % len(lib['carbs'])]}"
+        lunch = f"{lib['protein'][(i + 1) % len(lib['protein'])]} + {lib['veggies'][i % len(lib['veggies'])]} + {lib['carbs'][(i + 1) % len(lib['carbs'])]}"
+        dinner = f"{lib['protein'][(i + 2) % len(lib['protein'])]} + {lib['veggies'][(i + 1) % len(lib['veggies'])]}"
+        snack = f"{lib['fats'][i % len(lib['fats'])]} + greek yogurt"
+        plan.append({"day": d, "breakfast": breakfast, "lunch": lunch, "dinner": dinner, "snack": snack})
+
+    shopping = sorted({item for v in lib.values() for item in v})
+    return {"days": plan, "shopping_list": shopping}
+
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -434,6 +479,7 @@ def dashboard(user_id: int, request: Request):
 
     weekly = weekly_summary(user_id)
     adv = advanced_progress(user_id)
+    planner = weekly_meal_planner(user)
 
     return templates.TemplateResponse(
         "dashboard.html",
@@ -445,6 +491,7 @@ def dashboard(user_id: int, request: Request):
             "analytics": weekly,
             "advanced": adv,
             "nudge_preview": build_daily_nudge(user, weekly, adv),
+            "planner_preview": planner,
             "me": current_user(request),
         },
     )
@@ -601,3 +648,40 @@ def api_nudge(user_id: int):
             "whatsapp": {"status": "ready_for_integration", "payload_preview": msg},
         },
     }
+
+
+@app.get("/api/food/library/{user_id}")
+def api_food_library(user_id: int):
+    c = conn()
+    user = c.execute("select diet_pref from users where id=?", (user_id,)).fetchone()
+    c.close()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"ok": True, "library": food_library(user["diet_pref"]) }
+
+
+@app.post("/api/meal/swap/{user_id}")
+def api_meal_swap(user_id: int, payload: dict):
+    c = conn()
+    user = c.execute("select diet_pref from users where id=?", (user_id,)).fetchone()
+    c.close()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    disliked = payload.get("disliked", [])
+    if isinstance(disliked, str):
+        disliked = [x.strip() for x in disliked.split(",") if x.strip()]
+    swaps = suggest_swaps(disliked, user["diet_pref"])
+    return {"ok": True, "swaps": swaps}
+
+
+@app.get("/api/planner/weekly/{user_id}")
+def api_weekly_planner(user_id: int):
+    c = conn()
+    user = c.execute("select * from users where id=?", (user_id,)).fetchone()
+    c.close()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    planner = weekly_meal_planner(user)
+    return {"ok": True, "planner": planner}
