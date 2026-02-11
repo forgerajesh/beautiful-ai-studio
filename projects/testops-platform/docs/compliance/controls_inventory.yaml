@@ -1,0 +1,17 @@
+controls:
+  - id: SOC2-CC6.1
+    framework: SOC2
+    description: Logical access controls are enforced
+    evidence_features: ["rbac", "jwt_auth", "sso_status", "scim_audit"]
+  - id: SOC2-CC7.2
+    framework: SOC2
+    description: Security events are monitored and alerted
+    evidence_features: ["audit_log", "alerts", "backup_drill"]
+  - id: ISO27001-A.12.4
+    framework: ISO27001
+    description: Logging and monitoring controls
+    evidence_features: ["audit_log", "immutable_retention", "pii_masking"]
+  - id: ISO27001-A.17.1
+    framework: ISO27001
+    description: Information security continuity
+    evidence_features: ["backup", "restore_validation", "drill_reports"]

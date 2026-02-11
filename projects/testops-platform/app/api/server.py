@@ -66,6 +66,10 @@ from app.wave5.mobile_cloud import run_cloud_mobile, last_mobile_cloud_report
 from app.wave5.secrets import secrets_status
 from app.wave5.backup import run_backup, list_backups
 from app.wave5.alerts import send_alert, notify_gate_block, notify_critical_failure
+from app.wave6.compliance import controls_coverage, retention_status, validate_pii_masking
+from app.wave6.sso_scim import enterprise_sso_readiness, scim_create, scim_update, scim_deactivate, scim_list
+from app.wave6.ha_dr import run_drill, latest_report as latest_drill_report
+from app.wave6.cost_governance import set_budget_policy, track_usage, throttle_decision, list_policies
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -860,3 +864,95 @@ def wave5_alerts_test(payload: dict, role: str = Depends(get_role)):
         'webhook_url': payload.get('webhook_url'),
     }
     return send_alert(channel, test_payload)
+
+
+@app.post('/wave6/compliance/controls')
+def wave6_compliance_controls(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return controls_coverage(payload.get('features') or {})
+
+
+@app.get('/wave6/compliance/audit-retention')
+def wave6_compliance_retention(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return retention_status()
+
+
+@app.post('/wave6/compliance/pii-mask/validate')
+def wave6_compliance_pii(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return validate_pii_masking(payload.get('sample') or payload)
+
+
+@app.get('/wave6/sso/status')
+def wave6_sso_status(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return enterprise_sso_readiness()
+
+
+@app.get('/wave6/scim/users')
+def wave6_scim_users(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return scim_list()
+
+
+@app.post('/wave6/scim/users')
+def wave6_scim_create(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return scim_create(payload.get('user') or {}, actor=str(payload.get('actor', role)))
+
+
+@app.put('/wave6/scim/users/{user_id}')
+def wave6_scim_update(user_id: str, payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return scim_update(user_id, payload.get('updates') or {}, actor=str(payload.get('actor', role)))
+
+
+@app.post('/wave6/scim/users/{user_id}/deactivate')
+def wave6_scim_deactivate(user_id: str, payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return scim_deactivate(user_id, actor=str(payload.get('actor', role)))
+
+
+@app.post('/wave6/ha-dr/drill/run')
+def wave6_ha_dr_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_drill(label=str(payload.get('label', 'manual')))
+
+
+@app.get('/wave6/ha-dr/drill/latest')
+def wave6_ha_dr_latest(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return latest_drill_report()
+
+
+@app.get('/wave6/cost/policies')
+def wave6_cost_policies(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return list_policies()
+
+
+@app.post('/wave6/cost/policies')
+def wave6_cost_set_policy(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return set_budget_policy(
+        scope=str(payload.get('scope', 'default')),
+        daily_limit=float(payload.get('daily_limit', 100)),
+        warning_threshold=float(payload.get('warning_threshold', 0.8)),
+    )
+
+
+@app.post('/wave6/cost/usage/track')
+def wave6_cost_track_usage(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return track_usage(
+        scope=str(payload.get('scope', 'default')),
+        amount=float(payload.get('amount', 0)),
+        meta=payload.get('meta') or {},
+    )
+
+
+@app.get('/wave6/cost/throttle/{scope}')
+def wave6_cost_throttle(scope: str, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return throttle_decision(scope)
