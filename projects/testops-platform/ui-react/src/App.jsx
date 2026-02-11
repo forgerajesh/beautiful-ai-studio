@@ -12,9 +12,10 @@ import {
   getEtlProfiles, runEtl, getLastEtlReport,
   sendNativeChannelMessage, executeWave4Contract, analyzeWave4Drift, listWave4DriftReports,
   runWave4Fuzz, listWave4FuzzReports, runWave4Soak, listWave4SoakReports,
+  getWave41AuthStatus, evalWave41Policy, getWave41QueueReadiness, verifyWave41QueueStartup,
 } from './api'
 
-const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Tenants', 'Logs']
+const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Wave4.1', 'Tenants', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -61,6 +62,10 @@ export default function App() {
   const [wave4DriftReports, setWave4DriftReports] = useState([])
   const [wave4FuzzReports, setWave4FuzzReports] = useState([])
   const [wave4SoakReports, setWave4SoakReports] = useState([])
+  const [wave41AuthStatus, setWave41AuthStatus] = useState(null)
+  const [wave41PolicyInput, setWave41PolicyInput] = useState('{"counts":{"fail":0,"error":0},"critical_security_failures":0}')
+  const [wave41QueueStatus, setWave41QueueStatus] = useState(null)
+  const [wave41Channel, setWave41Channel] = useState('teams')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -69,10 +74,11 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr, w4d, w4f, w4s] = await Promise.all([
+      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr, w4d, w4f, w4s, a41, q41] = await Promise.all([
         getChannels(), getAgents(), getWorkflows(), getTenants(), getWave3Executive(), getWave3Trends(), listWave3Checkpoints(),
         listArtifacts(), getTestdataProfiles(), getEtlProfiles(), getLastEtlReport(),
         listWave4DriftReports(), listWave4FuzzReports(), listWave4SoakReports(),
+        getWave41AuthStatus(), getWave41QueueReadiness(),
       ])
       setChannels(c.supported || [])
       setAgents(a.agents || [])
@@ -90,6 +96,8 @@ export default function App() {
       setWave4DriftReports(w4d.reports || [])
       setWave4FuzzReports(w4f.reports || [])
       setWave4SoakReports(w4s.reports || [])
+      setWave41AuthStatus(a41)
+      setWave41QueueStatus(q41)
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -273,6 +281,39 @@ export default function App() {
             }}>Run Soak</button>
             <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: 'slack', chat_id: 'C123', text: 'Wave4 smoke message from UI' }), null, 2))}>Send Slack Smoke</button>
             <div>Fuzz reports: <b>{wave4FuzzReports.length}</b> | Soak reports: <b>{wave4SoakReports.length}</b></div>
+          </Card>
+        </div>}
+
+        {activeTab === 'Wave4.1' && <div className="panel-grid">
+          <Card title="Auth Hardening Status">
+            <button onClick={async () => { const r = await getWave41AuthStatus(); setWave41AuthStatus(r); setOutput(JSON.stringify(r, null, 2)) }}>Refresh Auth Mode</button>
+            <pre>{JSON.stringify(wave41AuthStatus || {}, null, 2)}</pre>
+          </Card>
+          <Card title="Policy Adapter (OPA + local fallback)">
+            <input value={wave41PolicyInput} onChange={(e) => setWave41PolicyInput(e.target.value)} />
+            <button onClick={async () => {
+              let payload = {}
+              try { payload = JSON.parse(wave41PolicyInput) } catch {}
+              const r = await evalWave41Policy(payload)
+              setOutput(JSON.stringify(r, null, 2))
+            }}>Evaluate Policy</button>
+          </Card>
+          <Card title="Queue Readiness + Channel Smoke">
+            <button onClick={async () => {
+              const r = await getWave41QueueReadiness()
+              setWave41QueueStatus(r)
+              setOutput(JSON.stringify(r, null, 2))
+            }}>Check Readiness</button>
+            <button onClick={async () => setOutput(JSON.stringify(await verifyWave41QueueStartup(), null, 2))}>Startup Verify</button>
+            <div>Ready: <b>{String(wave41QueueStatus?.ready)}</b></div>
+            <div>
+              <select value={wave41Channel} onChange={(e) => setWave41Channel(e.target.value)}>
+                <option value="teams">teams</option>
+                <option value="slack">slack</option>
+                <option value="discord">discord</option>
+              </select>
+              <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: wave41Channel, chat_id: '', text: 'Wave4.1 channel smoke from UI' }), null, 2))}>Send Smoke</button>
+            </div>
           </Card>
         </div>}
 

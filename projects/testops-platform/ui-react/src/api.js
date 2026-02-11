@@ -140,3 +140,15 @@ export const runWave4Soak = (payload) => api('/wave4/performance/soak', {
   body: JSON.stringify(payload),
 })
 export const listWave4SoakReports = () => api('/wave4/performance/soak/reports')
+
+export const getWave41AuthStatus = () => api('/wave4.1/auth/status')
+export const verifyWave41Auth = (token) => api('/wave4.1/auth/verify', {
+  method: 'GET',
+  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-API-Key': localStorage.getItem('testops_api_key') || 'admin-token' },
+})
+export const evalWave41Policy = (payload) => api('/wave4.1/policy/evaluate', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const getWave41QueueReadiness = () => api('/wave4.1/queue/readiness')
+export const verifyWave41QueueStartup = () => api('/wave4.1/queue/startup-verify', { method: 'POST' })
