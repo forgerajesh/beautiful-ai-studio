@@ -247,17 +247,38 @@ python main.py --config config/product.yaml --telegram-listen
 ```
 (Requires `agent.channels.telegram.bot_token` in config.)
 
+## Wave4 hardening pack
+- Real contract execution (not just schema): `POST /wave4/contract/execute`
+- ETL data drift analyzer + persisted reports:
+  - `POST /wave4/drift/analyze`
+  - `GET /wave4/drift/reports`
+- API security fuzzing + authz smoke + persisted findings:
+  - `POST /wave4/security/fuzz`
+  - `GET /wave4/security/fuzz/reports`
+- Soak/endurance test runner + percentile persistence:
+  - `POST /wave4/performance/soak`
+  - `GET /wave4/performance/soak/reports`
+- Native channel send adapters:
+  - Slack + Discord adapters
+  - unified API hook: `POST /channels/send`
+  - generic webhook ingress kept: `POST /webhook/{channel}`
+- React UI: new **Wave4** tab for contract execution, drift, fuzz, soak, and native channel smoke send.
+
+Wave4 artifacts:
+- `reports/wave4-drift-reports.json`
+- `reports/wave4-fuzz-reports.json`
+- `reports/wave4-soak-reports.json`
+
+## CI/CD wiring (Wave4)
+- `.github/workflows/quality-gates.yml` → install + pytest gate
+- `.github/workflows/promotion-sim.yml` → quality gate + promotion simulation + rollback hook on failure
+- `scripts/rollback_hook.sh` → rollback stub for environment-specific implementation
+
 ## Notes
 - Functional feature reuses the Python agentic framework workflows.
 - Security feature reuses SECQ runner.
 - Non-functional feature currently includes HTTP SLA and light load checks.
-- Telegram is implemented natively (poll/send). Other channels are integrated through webhook ingress (`/webhook/{channel}`) and can be provider-wired with channel credentials.
-
-## Next upgrades
-- contract testing layer
-- distributed load profiles
-- flaky test quarantine + trend analytics
-- policy gates by environment and risk profile
+- Telegram, Slack, and Discord now support native send adapters; webhook ingress (`/webhook/{channel}`) remains for generic channel wiring.
 
 ## ETL Testing Module
 The platform now includes a profile-driven ETL validation engine under `app/etl`.

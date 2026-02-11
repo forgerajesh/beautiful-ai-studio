@@ -113,3 +113,30 @@ export const generateTestdata = (profile, users, orders) => api('/testdata/gener
 })
 export const resetTestdata = () => api('/testdata/reset', { method: 'POST' })
 export const getTestdataStatus = () => api('/testdata/status')
+
+export const sendNativeChannelMessage = (payload) => api('/channels/send', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+
+export const executeWave4Contract = (payload) => api('/wave4/contract/execute', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const analyzeWave4Drift = (payload) => api('/wave4/drift/analyze', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const listWave4DriftReports = () => api('/wave4/drift/reports')
+
+export const runWave4Fuzz = (payload) => api('/wave4/security/fuzz', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const listWave4FuzzReports = () => api('/wave4/security/fuzz/reports')
+
+export const runWave4Soak = (payload) => api('/wave4/performance/soak', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const listWave4SoakReports = () => api('/wave4/performance/soak/reports')

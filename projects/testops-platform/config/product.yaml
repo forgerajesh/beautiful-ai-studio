@@ -38,8 +38,12 @@ agent:
       webhook_enabled: true
     discord:
       webhook_enabled: true
+      bot_token: ""
+      channel_id: ""
     slack:
       webhook_enabled: true
+      bot_token: ""
+      channel: ""
     signal:
       webhook_enabled: true
     imessage:

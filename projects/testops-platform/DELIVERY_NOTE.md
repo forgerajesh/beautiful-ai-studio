@@ -1,78 +1,100 @@
-# Delivery Note — Production Polish Upgrade
+# Delivery Note — Wave4 Hardening Pack
 
-## What changed
+## Delivered scope
 
-### 1) ETL Testing Module
-- Added new package: `app/etl/`
-  - `engine.py` with profile-driven ETL execution and checks:
-    - schema validation
-    - rowcount reconciliation
-    - null checks
-    - duplicate checks
-    - PK null checks
-    - freshness/latency checks
-    - business rule checks
-- Added ETL API endpoints:
-  - `POST /etl/run`
-  - `GET /etl/profiles`
-  - `GET /etl/last-report`
-- Added sample ETL assets:
-  - `etl/profiles.yaml`
-  - `etl/source_orders.csv`
-  - `etl/target_orders.csv`
-- Added generated report output:
-  - `reports/etl-report.json`
-- Integrated ETL summary card in server-rendered dashboard template.
+### 1) Real contract execution
+- Added executable contract runner:
+  - `app/wave4/contract/executor.py`
+- New endpoint:
+  - `POST /wave4/contract/execute`
+- Behavior:
+  - Loads contract JSON
+  - Executes each endpoint against provider base URL (from payload or contract field)
+  - Verifies expected status per method/path
+  - Returns detailed pass/fail summary per contract endpoint
 
-### 2) Beautiful UI Refresh (React)
-- Reworked UX to a cleaner command-center layout with:
-  - sidebar tabs/navigation
-  - KPI hero strip
-  - grouped sections and cards
-  - improved trend + heatmap visuals
-  - responsive breakpoints for laptop/mobile
-- Ensured existing capabilities remain reachable across structured tabs.
-- Added ETL section integrated with new ETL endpoints.
+### 2) ETL data drift monitoring
+- Added drift analyzer:
+  - `app/wave4/drift/analyzer.py`
+- New endpoints:
+  - `POST /wave4/drift/analyze`
+  - `GET /wave4/drift/reports`
+- Behavior:
+  - Numeric drift: baseline vs current mean/std with z-score threshold
+  - Categorical drift: frequency shift (L1 distance)
+  - Persists reports to `reports/wave4-drift-reports.json`
 
-### 3) Productization
-- Added `Makefile` targets:
-  - `make bootstrap`, `make api`, `make worker`, `make ui`, `make stack`, `make test`, `make etl`
-- Added runnable scripts:
-  - `scripts/bootstrap.sh`
-  - `scripts/run-api.sh`
-  - `scripts/run-worker.sh`
-  - `scripts/run-ui.sh`
-- Added `.env.example` with clear grouped env vars.
-- Added deployment/quickstart doc: `docs/DEPLOYMENT.md`.
+### 3) API security fuzzing module
+- Added baseline fuzzing module:
+  - `app/wave4/security/fuzzer.py`
+- New endpoints:
+  - `POST /wave4/security/fuzz`
+  - `GET /wave4/security/fuzz/reports`
+- Behavior:
+  - Path/query/body fuzz smoke cases
+  - Authz matrix smoke (`/api/admin` anonymous vs auth)
+  - Persists findings to `reports/wave4-fuzz-reports.json`
 
-### 4) Testing + Quality
-- Added ETL tests:
-  - `tests/test_etl.py` (core ETL checks + endpoints)
-- Updated API catalog tests to include ETL profile endpoint.
-- Full test suite status: **32 passed**.
+### 4) Soak/endurance performance
+- Added soak runner:
+  - `app/wave4/performance/soak.py`
+- New endpoints:
+  - `POST /wave4/performance/soak`
+  - `GET /wave4/performance/soak/reports`
+- Behavior:
+  - Long-run loop with duration/interval/jitter
+  - Percentiles (p50/p95/p99/max)
+  - Persists reports to `reports/wave4-soak-reports.json`
 
-### 5) Deployment Readiness
-- Added root `docker-compose.yml` for:
-  - `api`, `worker`, `ui`, `redis`
-  - healthchecks included for all services
-- Added Dockerfiles:
-  - `Dockerfile` (API/worker image)
-  - `ui-react/Dockerfile` (UI image)
-- Updated `/health` to reflect ETL readiness (`etl_ready`).
-- Updated `/doctor` checks with ETL config/data readiness checks.
+### 5) Native channel adapters expansion
+- Added native adapters:
+  - `app/channels/slack.py`
+  - `app/channels/discord.py`
+- Updated registry wiring:
+  - `app/channels/registry.py`
+- Added API hook:
+  - `POST /channels/send` (telegram/slack/discord)
+- Kept generic webhook ingress intact:
+  - `POST /webhook/{channel}`
+- Config wiring updated in:
+  - `config/product.yaml` (slack/discord token + destination fields)
 
-## Verified run commands
+### 6) CI/CD pipeline wiring
+- Added GitHub workflows:
+  - `.github/workflows/quality-gates.yml`
+  - `.github/workflows/promotion-sim.yml`
+- Added rollback hook stub:
+  - `scripts/rollback_hook.sh`
+
+## UI integration
+- React UI updated with new **Wave4** tab:
+  - Contract execute controls
+  - Drift run + report count
+  - Fuzz run + report count
+  - Soak run + report count
+  - Native channel send smoke button
+- Updated files:
+  - `ui-react/src/App.jsx`
+  - `ui-react/src/api.js`
+
+## Tests added
+- New test suite:
+  - `tests/test_wave4.py`
+- Covers:
+  - Contract execution endpoint (real local HTTP target)
+  - Drift analyze + report listing
+  - Fuzz run + report listing
+  - Soak run + report listing
+  - Native Slack/Discord send API with request mocking
+
+## Verified commands
 ```bash
-make bootstrap
-make api
-make worker
-make ui
-make test
-make stack
+cd /home/vnc/.openclaw/workspace/projects/testops-platform
+pytest -q
 ```
 
-## Current status
-- Backend, ETL module, and UI changes implemented.
-- Tests passing (`32 passed`).
-- UI production build succeeds (`npm run build`).
-- Docker Compose stack + deployment docs are in place.
+Optional local run:
+```bash
+make api
+cd ui-react && npm run dev
+```

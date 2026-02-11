@@ -54,6 +54,10 @@ from app.wave32.visual.regression import compare_snapshot
 from app.wave32.performance.percentiles import compute_percentiles
 from app.wave32.chaos.scenarios import run_chaos_scenario
 from app.etl.engine import run_etl_profile, list_profiles as list_etl_profiles, load_last_report as load_last_etl_report
+from app.wave4.contract.executor import execute_contract
+from app.wave4.drift.analyzer import analyze_drift, list_drift_reports
+from app.wave4.security.fuzzer import run_fuzz, list_fuzz_reports
+from app.wave4.performance.soak import run_soak, list_soak_reports
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -216,6 +220,22 @@ def webhook(channel: str, payload: dict):
     response = agent.handle(ChannelMessage(channel=channel, user_id=user_id, chat_id=chat_id, text=text, raw=payload))
     logbus.push("info", "webhook_message", {"channel": channel, "text": text[:120]})
     return {"ok": True, "channel": channel, "response": response}
+
+
+@app.post('/channels/send')
+def channels_send(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    cfg = load_config(str(payload.get('config_path', 'config/product.yaml')))
+    channel = str(payload.get('channel', 'telegram'))
+    chat_id = str(payload.get('chat_id', ''))
+    text = str(payload.get('text', '')).strip()
+    reg = ChannelRegistry(cfg)
+    adapter = reg.get(channel)
+    if not adapter:
+        return {"ok": False, "error": f"unsupported channel: {channel}"}
+    result = adapter.send(chat_id, text)
+    logbus.push("info", "channel_send", {"channel": channel, "chat_id": chat_id})
+    return {"ok": True, "channel": channel, "result": result}
 
 
 @app.get("/tenants")
@@ -653,3 +673,65 @@ def wave32_perf_percentiles(payload: dict, role: str = Depends(get_role)):
 def wave32_chaos_run(payload: dict, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator"])
     return run_chaos_scenario(str(payload.get('scenario', 'latency-spike')))
+
+
+@app.post('/wave4/contract/execute')
+def wave4_contract_execute(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    result = execute_contract(
+        contract_path=str(payload.get('contract_path', 'requirements/sample-contract.json')),
+        provider_base_url=str(payload.get('provider_base_url', '')),
+        timeout_s=int(payload.get('timeout_s', 10)),
+    )
+    logbus.push("info", "wave4_contract_execute", {"ok": result.get("ok"), "contract": result.get("contract")})
+    return result
+
+
+@app.post('/wave4/drift/analyze')
+def wave4_drift_analyze(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return analyze_drift(
+        baseline=payload.get('baseline') or [],
+        current=payload.get('current') or [],
+        numeric_fields=payload.get('numeric_fields') or [],
+        categorical_fields=payload.get('categorical_fields') or [],
+    )
+
+
+@app.get('/wave4/drift/reports')
+def wave4_drift_reports(limit: int = 20, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"reports": list_drift_reports(limit=limit)}
+
+
+@app.post('/wave4/security/fuzz')
+def wave4_security_fuzz(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_fuzz(
+        target_base_url=str(payload.get('target_base_url', 'http://localhost:8090')),
+        path=str(payload.get('path', '/')),
+        method=str(payload.get('method', 'GET')),
+        auth_header=str(payload.get('auth_header', '')),
+    )
+
+
+@app.get('/wave4/security/fuzz/reports')
+def wave4_security_fuzz_reports(limit: int = 20, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"reports": list_fuzz_reports(limit=limit)}
+
+
+@app.post('/wave4/performance/soak')
+def wave4_performance_soak(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_soak(
+        duration_seconds=int(payload.get('duration_seconds', 60)),
+        interval_ms=int(payload.get('interval_ms', 200)),
+        jitter_ms=int(payload.get('jitter_ms', 25)),
+    )
+
+
+@app.get('/wave4/performance/soak/reports')
+def wave4_performance_soak_reports(limit: int = 20, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"reports": list_soak_reports(limit=limit)}

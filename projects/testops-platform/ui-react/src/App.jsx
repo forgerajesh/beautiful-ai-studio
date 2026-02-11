@@ -10,9 +10,11 @@ import {
   listArtifacts, readArtifact, runDoctor,
   getTestdataProfiles, seedTestdata, loadTestdata, generateTestdata, resetTestdata, getTestdataStatus,
   getEtlProfiles, runEtl, getLastEtlReport,
+  sendNativeChannelMessage, executeWave4Contract, analyzeWave4Drift, listWave4DriftReports,
+  runWave4Fuzz, listWave4FuzzReports, runWave4Soak, listWave4SoakReports,
 } from './api'
 
-const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Tenants', 'Logs']
+const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Tenants', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -54,6 +56,11 @@ export default function App() {
   const [etlProfiles, setEtlProfiles] = useState([])
   const [etlProfile, setEtlProfile] = useState('retail_orders')
   const [etlReport, setEtlReport] = useState(null)
+  const [wave4ProviderUrl, setWave4ProviderUrl] = useState('http://localhost:8090')
+  const [wave4ContractPath, setWave4ContractPath] = useState('requirements/sample-contract.json')
+  const [wave4DriftReports, setWave4DriftReports] = useState([])
+  const [wave4FuzzReports, setWave4FuzzReports] = useState([])
+  const [wave4SoakReports, setWave4SoakReports] = useState([])
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -62,9 +69,10 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr] = await Promise.all([
+      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr, w4d, w4f, w4s] = await Promise.all([
         getChannels(), getAgents(), getWorkflows(), getTenants(), getWave3Executive(), getWave3Trends(), listWave3Checkpoints(),
         listArtifacts(), getTestdataProfiles(), getEtlProfiles(), getLastEtlReport(),
+        listWave4DriftReports(), listWave4FuzzReports(), listWave4SoakReports(),
       ])
       setChannels(c.supported || [])
       setAgents(a.agents || [])
@@ -79,6 +87,9 @@ export default function App() {
       setEtlProfiles(etlp.profiles || [])
       setEtlProfile((etlp.profiles || [])[0]?.name || 'retail_orders')
       if (etlr?.ok) setEtlReport(etlr)
+      setWave4DriftReports(w4d.reports || [])
+      setWave4FuzzReports(w4f.reports || [])
+      setWave4SoakReports(w4s.reports || [])
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -228,6 +239,41 @@ export default function App() {
           <Card title="Flaky"><input value={flakyTestId} onChange={(e) => setFlakyTestId(e.target.value)} /><label>passed<input type="checkbox" checked={flakyPassed} onChange={(e) => setFlakyPassed(e.target.checked)} /></label><button onClick={async () => setOutput(JSON.stringify(await recordFlaky(flakyTestId, flakyPassed), null, 2))}>Record</button><button onClick={async () => setOutput(JSON.stringify(await listFlaky(), null, 2))}>List</button></Card>
           <Card title="Promotion"><input value={promotionFrom} onChange={(e) => setPromotionFrom(e.target.value)} /><input value={promotionTo} onChange={(e) => setPromotionTo(e.target.value)} /><input value={promotionCounts} onChange={(e) => setPromotionCounts(e.target.value)} /><button onClick={async () => { let counts = {}; try { counts = JSON.parse(promotionCounts) } catch {}; setOutput(JSON.stringify(await evalPromotion({ from: promotionFrom, to: promotionTo, counts }), null, 2)) }}>Evaluate</button></Card>
           <Card title="Visual + Perf + Chaos"><input value={visualName} onChange={(e) => setVisualName(e.target.value)} /><input value={visualPath} onChange={(e) => setVisualPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await compareVisual(visualName, visualPath), null, 2))}>Compare Visual</button><input value={perfSamples} onChange={(e) => setPerfSamples(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await perfPercentiles(perfSamples.split(',').map(x => parseInt(x.trim(), 10)).filter(x => !Number.isNaN(x))), null, 2))}>P50/P95/P99</button><input value={chaosScenario} onChange={(e) => setChaosScenario(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await runChaos(chaosScenario), null, 2))}>Run Chaos</button></Card>
+        </div>}
+
+        {activeTab === 'Wave4' && <div className="panel-grid">
+          <Card title="Contract Execution (Real Endpoint)">
+            <input value={wave4ProviderUrl} onChange={(e) => setWave4ProviderUrl(e.target.value)} placeholder="Provider Base URL" />
+            <input value={wave4ContractPath} onChange={(e) => setWave4ContractPath(e.target.value)} placeholder="Contract path" />
+            <button onClick={async () => setOutput(JSON.stringify(await executeWave4Contract({ provider_base_url: wave4ProviderUrl, contract_path: wave4ContractPath }), null, 2))}>Execute Contract</button>
+          </Card>
+          <Card title="ETL Drift Monitor">
+            <button onClick={async () => {
+              const r = await analyzeWave4Drift({
+                baseline: [{ amount: 100, status: 'ok' }, { amount: 110, status: 'ok' }, { amount: 95, status: 'ok' }],
+                current: [{ amount: 190, status: 'ok' }, { amount: 170, status: 'error' }, { amount: 180, status: 'error' }],
+                numeric_fields: ['amount'],
+                categorical_fields: ['status'],
+              })
+              setOutput(JSON.stringify(r, null, 2))
+              setWave4DriftReports((await listWave4DriftReports()).reports || [])
+            }}>Run Drift Analysis</button>
+            <div>Saved reports: <b>{wave4DriftReports.length}</b></div>
+          </Card>
+          <Card title="Security Fuzz + Soak">
+            <button onClick={async () => {
+              const r = await runWave4Fuzz({ target_base_url: wave4ProviderUrl, path: '/health', method: 'GET' })
+              setOutput(JSON.stringify(r, null, 2))
+              setWave4FuzzReports((await listWave4FuzzReports()).reports || [])
+            }}>Run Fuzz</button>
+            <button onClick={async () => {
+              const r = await runWave4Soak({ duration_seconds: 2, interval_ms: 20, jitter_ms: 2 })
+              setOutput(JSON.stringify(r, null, 2))
+              setWave4SoakReports((await listWave4SoakReports()).reports || [])
+            }}>Run Soak</button>
+            <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: 'slack', chat_id: 'C123', text: 'Wave4 smoke message from UI' }), null, 2))}>Send Slack Smoke</button>
+            <div>Fuzz reports: <b>{wave4FuzzReports.length}</b> | Soak reports: <b>{wave4SoakReports.length}</b></div>
+          </Card>
         </div>}
 
         {activeTab === 'Tenants' && <Card title="Multi-tenant Channel Config"><div><select value={tenantId} onChange={(e) => onTenantLoad(e.target.value)}>{tenants.map((t) => <option key={t}>{t}</option>)}</select><button onClick={onTenantSave}>Save Config</button></div><div className="panel-grid">{Object.entries(tenantCfg.channels || {}).map(([name, cfg]) => <Card key={name} title={name}>{Object.entries(cfg).map(([k, v]) => <div key={k}><label>{k}</label><input value={String(v)} onChange={(e) => updateChannelField(name, k, e.target.value)} /></div>)}</Card>)}</div></Card>}
