@@ -362,3 +362,31 @@ Generated report:
 - `make test`
 
 Deployment details: `docs/DEPLOYMENT.md`
+
+## Wave6 final enterprise hardening pack
+- Compliance pack:
+  - Controls mapping inventory: `docs/compliance/controls_inventory.yaml`
+  - Controls coverage endpoint: `POST /wave6/compliance/controls`
+  - Immutable audit retention policy doc: `docs/compliance/audit_retention_policy.md`
+  - Retention runtime endpoint: `GET /wave6/compliance/audit-retention`
+  - PII masking validator endpoint: `POST /wave6/compliance/pii-mask/validate`
+- SSO + SCIM:
+  - Enterprise SSO readiness summary endpoint: `GET /wave6/sso/status`
+  - SCIM skeleton provisioning endpoints:
+    - `GET /wave6/scim/users`
+    - `POST /wave6/scim/users`
+    - `PUT /wave6/scim/users/{user_id}`
+    - `POST /wave6/scim/users/{user_id}/deactivate`
+- HA/DR validation drills:
+  - Trigger drill: `POST /wave6/ha-dr/drill/run`
+  - Fetch latest report: `GET /wave6/ha-dr/drill/latest`
+- Cost + capacity governance:
+  - Budget policy APIs:
+    - `GET /wave6/cost/policies`
+    - `POST /wave6/cost/policies`
+  - Usage/throttle APIs:
+    - `POST /wave6/cost/usage/track`
+    - `GET /wave6/cost/throttle/{scope}`
+  - Budget warnings are integrated into Wave5 alerting path.
+- React UI:
+  - New **Final Hardening** tab for compliance, SSO/SCIM, HA/DR, and cost governance actions.

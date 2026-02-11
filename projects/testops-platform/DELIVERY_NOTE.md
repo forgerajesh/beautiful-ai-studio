@@ -94,3 +94,50 @@
 cd /home/vnc/.openclaw/workspace/projects/testops-platform
 pytest -q
 ```
+
+## Wave6 Final Enterprise-Ops Hardening Pack
+
+### 1) Compliance pack
+- Added controls mapping module: `app/wave6/compliance.py`
+- Added controls inventory doc: `docs/compliance/controls_inventory.yaml`
+- Added audit retention policy doc: `docs/compliance/audit_retention_policy.md`
+- Added endpoints:
+  - `POST /wave6/compliance/controls`
+  - `GET /wave6/compliance/audit-retention`
+  - `POST /wave6/compliance/pii-mask/validate`
+
+### 2) SSO + SCIM
+- Added enterprise SSO readiness summary using existing Wave4.1 auth mode: `app/wave6/sso_scim.py`
+- Added SCIM skeleton local provisioning + audit log:
+  - create/update/deactivate/list user records
+- Added endpoints:
+  - `GET /wave6/sso/status`
+  - `GET /wave6/scim/users`
+  - `POST /wave6/scim/users`
+  - `PUT /wave6/scim/users/{user_id}`
+  - `POST /wave6/scim/users/{user_id}/deactivate`
+
+### 3) HA/DR validation drills
+- Added drill runner: `app/wave6/ha_dr.py`
+- Drill executes backup + restore validation and produces RTO/RPO artifact reports
+- Added endpoints:
+  - `POST /wave6/ha-dr/drill/run`
+  - `GET /wave6/ha-dr/drill/latest`
+
+### 4) Cost + capacity governance
+- Added budget policy and usage tracking module: `app/wave6/cost_governance.py`
+- Added throttling decision API + warning integration into Wave5 alerting path
+- Added endpoints:
+  - `GET /wave6/cost/policies`
+  - `POST /wave6/cost/policies`
+  - `POST /wave6/cost/usage/track`
+  - `GET /wave6/cost/throttle/{scope}`
+
+### 5) UI integration
+- Updated React app and API bindings:
+  - `ui-react/src/App.jsx`
+  - `ui-react/src/api.js`
+- Added **Final Hardening** tab for compliance/SSO-SCIM/HA-DR/cost governance actions and views.
+
+### 6) Tests
+- Added `tests/test_wave6.py` for new modules/endpoints with alerting mock coverage.

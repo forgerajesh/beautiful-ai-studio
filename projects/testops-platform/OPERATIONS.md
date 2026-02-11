@@ -344,3 +344,46 @@ docker compose -f deploy/docker-compose.wave41.yml up --build
 - Keep secrets in `.env` only (never commit real tokens).
 - For enterprise deployment, prefer OIDC mode + OPA URL + Redis-backed workers.
 - Use the React UI for day-to-day operations; use this runbook for automation and CI hooks.
+
+---
+
+## 18) Wave6 final enterprise hardening
+```bash
+# Compliance controls coverage
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{"features":{"rbac":true,"jwt_auth":true,"audit_log":true,"alerts":true}}' \
+  http://localhost:8090/wave6/compliance/controls
+
+curl -H "X-API-Key: viewer-token" http://localhost:8090/wave6/compliance/audit-retention
+
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{"sample":{"email":"ceo@example.com","ssn":"123-45-6789"}}' \
+  http://localhost:8090/wave6/compliance/pii-mask/validate
+
+# SSO readiness + SCIM skeleton provisioning
+curl -H "X-API-Key: viewer-token" http://localhost:8090/wave6/sso/status
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"user":{"id":"u-100","userName":"u100@test.local","active":true},"actor":"ops"}' \
+  http://localhost:8090/wave6/scim/users
+curl -X PUT -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"updates":{"displayName":"Ops User"},"actor":"ops"}' \
+  http://localhost:8090/wave6/scim/users/u-100
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"actor":"ops"}' \
+  http://localhost:8090/wave6/scim/users/u-100/deactivate
+
+# HA/DR drill + report
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"label":"manual-drill"}' \
+  http://localhost:8090/wave6/ha-dr/drill/run
+curl -H "X-API-Key: viewer-token" http://localhost:8090/wave6/ha-dr/drill/latest
+
+# Cost governance
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"scope":"agent:playwright","daily_limit":100,"warning_threshold":0.8}' \
+  http://localhost:8090/wave6/cost/policies
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"scope":"agent:playwright","amount":85,"meta":{"source":"manual"}}' \
+  http://localhost:8090/wave6/cost/usage/track
+curl -H "X-API-Key: viewer-token" http://localhost:8090/wave6/cost/throttle/agent:playwright
+```
