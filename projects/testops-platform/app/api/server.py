@@ -62,6 +62,10 @@ from app.wave4.performance.soak import run_soak, list_soak_reports
 from app.wave41.auth.oidc_jwt import auth_mode_status, get_claims_hardened, role_from_claims_hardened
 from app.wave41.policy.adapter import evaluate_with_adapter
 from app.wave41.queue.readiness import queue_readiness, startup_verify_queue_connectivity
+from app.wave5.mobile_cloud import run_cloud_mobile, last_mobile_cloud_report
+from app.wave5.secrets import secrets_status
+from app.wave5.backup import run_backup, list_backups
+from app.wave5.alerts import send_alert, notify_gate_block, notify_critical_failure
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -179,6 +183,8 @@ def run_all(config_path: str = "config/product.yaml", role: str = Depends(get_ro
         "findings": [f.__dict__ for f in findings],
     }
     logbus.push("info", "suite_run", {"status": payload["status"], "counts": payload["counts"]})
+    if payload["counts"].get("error", 0) > 0:
+        payload["wave5_alert"] = notify_critical_failure("/run", payload["counts"])
     return payload
 
 
@@ -482,6 +488,24 @@ def mobile_report(role: str = Depends(get_role)):
     return mobile_last_report()
 
 
+@app.post('/wave5/mobile/cloud-run')
+def wave5_mobile_cloud_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_cloud_mobile(
+        provider=str(payload.get('provider', 'browserstack')),
+        device=str(payload.get('device', 'iPhone 13')),
+        app_url=str(payload.get('app_url', 'https://example.com')),
+        test_spec=str(payload.get('test_spec', 'smoke')),
+        simulate=payload.get('simulate'),
+    )
+
+
+@app.get('/wave5/mobile/cloud-last-report')
+def wave5_mobile_cloud_last_report(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return last_mobile_cloud_report()
+
+
 @app.post('/artifacts/read')
 def artifacts_read(payload: dict, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
@@ -674,12 +698,18 @@ def wave32_flaky_list(role: str = Depends(get_role)):
 @app.post('/wave3.2/promotion/evaluate')
 def wave32_promotion_evaluate(payload: dict, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
-    return evaluate_promotion(
+    result = evaluate_promotion(
         env_from=str(payload.get('from', 'qa')),
         env_to=str(payload.get('to', 'uat')),
         counts=payload.get('counts') or {},
         policy=payload.get('policy'),
     )
+    if not result.get('allowed', True):
+        result['decision'] = 'BLOCK'
+        result['wave5_alert'] = notify_gate_block(dict(result))
+    else:
+        result['decision'] = 'ALLOW'
+    return result
 
 
 @app.post('/wave3.2/visual/compare')
@@ -790,3 +820,43 @@ def wave41_queue_readiness(role: str = Depends(get_role)):
 def wave41_queue_startup_verify(role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return startup_verify_queue_connectivity()
+
+
+@app.get('/wave5/secrets/status')
+def wave5_secrets_status(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return secrets_status()
+
+
+@app.post('/wave5/backup/run')
+def wave5_backup_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_backup(label=str(payload.get('label', 'wave5')))
+
+
+@app.get('/wave5/backup/list')
+def wave5_backup_list(limit: int = 20, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"backups": list_backups(limit=limit)}
+
+
+@app.post('/wave5/alerts/send')
+def wave5_alerts_send(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    channel = str(payload.get('channel', 'webhook'))
+    alert_payload = payload.get('payload') or {}
+    return send_alert(channel, alert_payload)
+
+
+@app.post('/wave5/alerts/test')
+def wave5_alerts_test(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    channel = str(payload.get('channel', 'webhook'))
+    test_payload = {
+        'summary': 'Wave5 test alert',
+        'description': 'Synthetic alert from /wave5/alerts/test',
+        'severity': str(payload.get('severity', 'warning')),
+        'source': 'wave5-alert-test',
+        'webhook_url': payload.get('webhook_url'),
+    }
+    return send_alert(channel, test_payload)

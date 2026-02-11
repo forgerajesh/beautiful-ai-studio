@@ -36,6 +36,9 @@ agent:
       bot_token: ""
     whatsapp:
       webhook_enabled: true
+      access_token: ""
+      phone_number_id: ""
+      api_version: "v20.0"
     discord:
       webhook_enabled: true
       bot_token: ""
@@ -46,6 +49,7 @@ agent:
       channel: ""
     signal:
       webhook_enabled: true
+      bridge_url: ""
     imessage:
       webhook_enabled: true
     googlechat:
