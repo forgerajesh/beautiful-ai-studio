@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset='utf-8'><title>Diet & Exercise Coach</title>
+<style>body{font-family:Arial;margin:30px;background:#f5f7fb}.card{background:#fff;padding:16px;border-radius:12px;border:1px solid #dbe2ee;max-width:980px}input,select{padding:8px;margin:6px;border:1px solid #cbd5e1;border-radius:8px}button{padding:10px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}.users a{display:block;padding:6px 0}</style></head>
+<body>
+  <div class='card'>
+    <h1>Weight Loss Coach (Diet + Exercise)</h1>
+    <p>Register and get personalized daily plan + progress tracking + motivating coach feedback.</p>
+    <form method='post' action='/register'>
+      <input name='name' placeholder='Name' required>
+      <input name='email' placeholder='Email' required>
+      <input name='age' type='number' placeholder='Age' value='30' required>
+      <input name='height_cm' type='number' step='0.1' placeholder='Height (cm)' value='170' required>
+      <input name='weight_kg' type='number' step='0.1' placeholder='Current Weight (kg)' value='102' required>
+      <input name='goal_weight_kg' type='number' step='0.1' placeholder='Goal Weight (kg)' value='85' required>
+      <select name='activity_level'><option>low</option><option selected>moderate</option><option>high</option></select>
+      <select name='diet_pref'><option>balanced</option><option>veg</option><option>low_carb</option><option>high_protein</option></select>
+      <button type='submit'>Create Profile</button>
+    </form>
+    <hr>
+    <h3>Existing Users</h3>
+    <div class='users'>
+      {% for u in users %}
+      <a href='/dashboard/{{u.id}}'>{{u.name}} ({{u.email}}) - {{u.weight_kg}}kg → {{u.goal_weight_kg}}kg</a>
+      {% endfor %}
+    </div>
+  </div>
+</body></html>
