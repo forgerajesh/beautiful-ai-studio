@@ -70,6 +70,19 @@
   - `.env.example` (OIDC/JWT/OPA/Teams variables)
   - `config/product.yaml` (teams webhook_url config)
 
+### 8) Mobile testing module (added)
+- Added mobile module:
+  - `app/mobile/runner.py`
+- New endpoints:
+  - `GET /mobile/devices`
+  - `POST /mobile/run`
+  - `GET /mobile/last-report`
+- Behavior:
+  - Device-profile based mobile checks
+  - Simulated mode for fast smoke
+  - Optional real Playwright mode for screenshot-based execution
+  - Report persisted to `reports/mobile-report.json`
+
 ## Verified commands
 ```bash
 cd /home/vnc/.openclaw/workspace/projects/testops-platform
@@ -81,4 +94,13 @@ Wave4.1 stack run (optional):
 docker compose -f deploy/docker-compose.wave41.yml --profile prod up -d
 curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/auth/status
 curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/queue/readiness
+```
+
+Mobile quick run:
+```bash
+curl -H 'X-API-Key: viewer-token' http://localhost:8090/mobile/devices
+curl -X POST -H 'X-API-Key: operator-token' -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.com","device":"iPhone 13","simulate":true}' \
+  http://localhost:8090/mobile/run
+curl -H 'X-API-Key: viewer-token' http://localhost:8090/mobile/last-report
 ```
