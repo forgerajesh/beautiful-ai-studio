@@ -302,6 +302,30 @@ curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/auth/status
 curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/queue/readiness
 ```
 
+## Wave5 enterprise-ops pack
+- Real mobile device-cloud adapters (env-driven skeletons):
+  - `POST /wave5/mobile/cloud-run` (providers: `browserstack`, `saucelabs`; auto fallback simulate mode)
+  - `GET /wave5/mobile/cloud-last-report`
+  - persisted reports under `reports/wave5/mobile-cloud/`
+- Native channel expansion:
+  - WhatsApp Cloud API style adapter (`app/channels/whatsapp.py`)
+  - Signal native bridge hook adapter (`app/channels/signal.py`)
+  - `POST /channels/send` supports `whatsapp` and `signal`
+- Secrets provider plug-in:
+  - env provider + Vault HTTP style provider
+  - `GET /wave5/secrets/status`
+- Backup & DR:
+  - `POST /wave5/backup/run`
+  - `GET /wave5/backup/list`
+  - scripts: `scripts/wave5_backup.sh`, `scripts/wave5_restore.sh`
+- SLA alert routing:
+  - `POST /wave5/alerts/test`
+  - `POST /wave5/alerts/send`
+  - channels: webhook / PagerDuty / Opsgenie
+  - auto-trigger on gate blocks (`/wave3.2/promotion/evaluate`) and critical suite failures (`/run` errors)
+- React UI:
+  - New **Wave5** tab for mobile cloud run, secrets status, backups, alert test/send, and WhatsApp/Signal smoke actions.
+
 ## CI/CD wiring (Wave4)
 - `.github/workflows/quality-gates.yml` → install + pytest gate
 - `.github/workflows/promotion-sim.yml` → quality gate + promotion simulation + rollback hook on failure
@@ -311,7 +335,7 @@ curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/queue/readiness
 - Functional feature reuses the Python agentic framework workflows.
 - Security feature reuses SECQ runner.
 - Non-functional feature currently includes HTTP SLA and light load checks.
-- Telegram, Slack, and Discord now support native send adapters; webhook ingress (`/webhook/{channel}`) remains for generic channel wiring.
+- Telegram, Slack, Discord, WhatsApp, Signal and Teams support native send adapters; webhook ingress (`/webhook/{channel}`) remains for generic channel wiring.
 
 ## ETL Testing Module
 The platform now includes a profile-driven ETL validation engine under `app/etl`.

@@ -278,7 +278,45 @@ curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" 
 
 ---
 
-## 14) Deployment
+## 14) Wave5 enterprise operations
+```bash
+# Mobile cloud run (auto simulate fallback when creds are missing)
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"provider":"browserstack","device":"iPhone 13"}' \
+  http://localhost:8090/wave5/mobile/cloud-run
+
+curl -H "X-API-Key: viewer-token" http://localhost:8090/wave5/secrets/status
+
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"label":"manual-dr"}' \
+  http://localhost:8090/wave5/backup/run
+curl -H "X-API-Key: viewer-token" http://localhost:8090/wave5/backup/list
+
+# Alert routing tests
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{"channel":"webhook","webhook_url":"https://example.com/hook"}' \
+  http://localhost:8090/wave5/alerts/test
+
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"channel":"webhook","payload":{"summary":"manual critical","severity":"critical","webhook_url":"https://example.com/hook"}}' \
+  http://localhost:8090/wave5/alerts/send
+
+# Native channel smoke sends
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"channel":"whatsapp","chat_id":"15550001111","text":"wave5 smoke"}' \
+  http://localhost:8090/channels/send
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"channel":"signal","chat_id":"+15550001111","text":"wave5 smoke"}' \
+  http://localhost:8090/channels/send
+
+# DR scripts
+scripts/wave5_backup.sh nightly
+scripts/wave5_restore.sh backups/<archive>.tar.gz
+```
+
+---
+
+## 15) Deployment
 ### Compose (default)
 ```bash
 docker compose up --build
@@ -291,7 +329,7 @@ docker compose -f deploy/docker-compose.wave41.yml up --build
 
 ---
 
-## 15) Validation checklist (release smoke)
+## 16) Validation checklist (release smoke)
 1. `/health` returns `ok=true`
 2. `/doctor` shows all critical checks green for your env
 3. `POST /run` executes full suite
@@ -302,7 +340,7 @@ docker compose -f deploy/docker-compose.wave41.yml up --build
 
 ---
 
-## 16) Notes
+## 17) Notes
 - Keep secrets in `.env` only (never commit real tokens).
 - For enterprise deployment, prefer OIDC mode + OPA URL + Redis-backed workers.
 - Use the React UI for day-to-day operations; use this runbook for automation and CI hooks.
