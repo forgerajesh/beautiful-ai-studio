@@ -23,7 +23,7 @@ import {
   pushLifecycleToJira, pushLifecycleToTestRail,
 } from './api'
 
-const TABS = ['Dashboard', 'Execution', 'Data', 'Integrations', 'QA Lifecycle', 'Quality', 'Enterprise', 'Admin', 'Logs']
+const TABS = ['Dashboard', 'E2E Studio', 'Execution', 'Data', 'Integrations', 'Quality', 'Enterprise', 'Admin', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -304,9 +304,10 @@ export default function App() {
           <Card title="QA Artifacts"><input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await generateArtifacts({ product_name: artifactProduct }), null, 2))}>Generate</button></Card>
         </div>}
 
-        {activeTab === 'QA Lifecycle' && <div className="panel-grid">
-          <Card title="Step 1 — Add requirements">
-            <input value={lifecycleName} onChange={(e) => setLifecycleName(e.target.value)} placeholder="Requirement title" />
+        {activeTab === 'E2E Studio' && <div className="panel-grid e2e-grid">
+          <Card title="1) Product Requirement Intake">
+            <div className="stage-chip-row"><span className="stage-chip active">Discover</span><span className="stage-chip">Design</span><span className="stage-chip">Build</span><span className="stage-chip">Validate</span><span className="stage-chip">Release</span></div>
+            <input value={lifecycleName} onChange={(e) => setLifecycleName(e.target.value)} placeholder="Requirement title (e.g., SauceDemo checkout flow)" />
             <select value={lifecycleDomain} onChange={(e) => setLifecycleDomain(e.target.value)}>
               <option value="functional">functional</option>
               <option value="api">api</option>
@@ -320,32 +321,34 @@ export default function App() {
               <option value="medium">medium</option>
               <option value="high">high</option>
             </select>
-            <button onClick={async () => {
-              await createLifecycleRequirement({ title: lifecycleName, domain: lifecycleDomain, risk: lifecycleRisk, status: 'planned' })
-              await refreshLifecycle()
-            }}>Add</button>
-            {(lifecycleRequirements || []).slice(-8).reverse().map((r) => (
-              <div key={r.id} className="lifecycle-row">
-                <code>{r.id}</code> {r.title} [{r.domain}/{r.risk}] v{r.version}
+            <button onClick={async () => { await createLifecycleRequirement({ title: lifecycleName, domain: lifecycleDomain, risk: lifecycleRisk, status: 'planned' }); await refreshLifecycle() }}>Add Requirement</button>
+            <button onClick={async () => { await createLifecycleRequirement({ title: 'SauceDemo login + add to cart + checkout E2E', domain: 'functional', risk: 'high', status: 'planned' }); await refreshLifecycle() }}>Load SauceDemo Template</button>
+            {(lifecycleRequirements || []).slice(-6).reverse().map((r) => (
+              <div key={r.id} className="lifecycle-row compact"><code>{r.id}</code> {r.title} [{r.domain}/{r.risk}] v{r.version}
                 <button onClick={async () => { await updateLifecycleRequirement(r.id, { status: 'approved' }); await refreshLifecycle() }}>Approve</button>
                 <button onClick={async () => { await deleteLifecycleRequirement(r.id); await refreshLifecycle() }}>Delete</button>
               </div>
             ))}
           </Card>
 
-          <Card title="Steps 2-7 — Wizard flow">
+          <Card title="2) Test Design Studio (Manual + Automation)">
             <div className="wizard-steps">
-              <button onClick={() => runLifecycleStep('strategy')}>2. Strategy</button>
-              <button onClick={() => runLifecycleStep('design')}>3. Test design</button>
-              <button onClick={() => runLifecycleStep('cases')}>4. Test cases</button>
-              <button onClick={() => runLifecycleStep('plan')}>5. Test plan</button>
-              <button onClick={() => runLifecycleStep('types')}>6. Testing types</button>
-              <button onClick={() => runLifecycleStep('execute')}>7. Execute</button>
+              <button onClick={() => runLifecycleStep('strategy')}>Generate Strategy</button>
+              <button onClick={() => runLifecycleStep('design')}>Generate Test Design</button>
+              <button onClick={() => runLifecycleStep('cases')}>Generate Test Cases</button>
+              <button onClick={() => runLifecycleStep('plan')}>Build Test Plan</button>
+              <button onClick={() => runLifecycleStep('types')}>Map Testing Types</button>
             </div>
-            <pre>{JSON.stringify(lifecycleCurrent, null, 2)}</pre>
+            <div className="e2e-kpis">
+              <div className="mini"><span>Requirements</span><b>{(lifecycleRequirements||[]).length}</b></div>
+              <div className="mini"><span>Cases</span><b>{(lifecycleCurrent?.test_cases||[]).length || 0}</b></div>
+              <div className="mini"><span>Types</span><b>{Object.keys(lifecycleCurrent?.types_mapping||{}).length}</b></div>
+            </div>
+            <pre>{JSON.stringify({ strategy: lifecycleCurrent.strategy, design: lifecycleCurrent.design, plan: lifecycleCurrent.plan }, null, 2)}</pre>
           </Card>
 
-          <Card title="Step 8 — Review reports + traceability">
+          <Card title="3) Execute + Deployment Tracking">
+            <button onClick={() => runLifecycleStep('execute')}>Run End-to-End Execution</button>
             <button onClick={async () => {
               const saved = await saveLifecycleRun({
                 requirements: lifecycleRequirements,
@@ -358,11 +361,12 @@ export default function App() {
               })
               setOutput(JSON.stringify(saved, null, 2))
               await refreshLifecycle()
-            }}>Save Lifecycle Run</button>
-            <button onClick={async () => setOutput(JSON.stringify(await pushLifecycleToJira({ summary: 'QA Lifecycle Review', description: 'Lifecycle run reviewed in UI' }), null, 2))}>Push Jira</button>
-            <button onClick={async () => setOutput(JSON.stringify(await pushLifecycleToTestRail({ name: 'QA Lifecycle UI Run' }), null, 2))}>Push TestRail</button>
-            <div className="lifecycle-row"><b>Prior runs:</b> {(lifecycleRuns || []).length}</div>
-            {(lifecycleRuns || []).slice(0, 6).map((r) => <div key={r.run_id} className="lifecycle-row"><code>{r.run_id}</code> {r.created_at}</div>)}
+            }}>Save Release Candidate Run</button>
+            <button onClick={async () => setOutput(JSON.stringify(await pushLifecycleToJira({ summary: 'E2E Lifecycle Review', description: 'Release tracking from E2E Studio' }), null, 2))}>Push Jira</button>
+            <button onClick={async () => setOutput(JSON.stringify(await pushLifecycleToTestRail({ name: 'E2E Studio Run' }), null, 2))}>Push TestRail</button>
+            <div className="lifecycle-row"><b>Execution status:</b> {lifecycleCurrent?.execution?.status || 'not started'}</div>
+            <div className="lifecycle-row"><b>Saved runs:</b> {(lifecycleRuns || []).length}</div>
+            {(lifecycleRuns || []).slice(0, 5).map((r) => <div key={r.run_id} className="lifecycle-row compact"><code>{r.run_id}</code> {r.created_at}</div>)}
           </Card>
         </div>}
 
