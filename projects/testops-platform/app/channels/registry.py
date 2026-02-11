@@ -1,6 +1,7 @@
 from app.channels.telegram import TelegramAdapter
 from app.channels.slack import SlackAdapter
 from app.channels.discord import DiscordAdapter
+from app.channels.teams import TeamsAdapter
 
 
 class ChannelRegistry:
@@ -30,6 +31,7 @@ class ChannelRegistry:
         self.telegram = TelegramAdapter(channels.get("telegram", {}).get("bot_token", ""))
         self.slack = SlackAdapter(channels.get("slack", {}).get("bot_token", ""))
         self.discord = DiscordAdapter(channels.get("discord", {}).get("bot_token", ""))
+        self.teams = TeamsAdapter(channels.get("teams", {}).get("webhook_url", ""))
 
     def get(self, name: str):
         if name == "telegram":
@@ -38,4 +40,6 @@ class ChannelRegistry:
             return self.slack
         if name == "discord":
             return self.discord
+        if name == "teams":
+            return self.teams
         return None

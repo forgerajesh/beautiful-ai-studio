@@ -58,6 +58,9 @@ from app.wave4.contract.executor import execute_contract
 from app.wave4.drift.analyzer import analyze_drift, list_drift_reports
 from app.wave4.security.fuzzer import run_fuzz, list_fuzz_reports
 from app.wave4.performance.soak import run_soak, list_soak_reports
+from app.wave41.auth.oidc_jwt import auth_mode_status, get_claims_hardened, role_from_claims_hardened
+from app.wave41.policy.adapter import evaluate_with_adapter
+from app.wave41.queue.readiness import queue_readiness, startup_verify_queue_connectivity
 
 app = FastAPI(title="TestOps Platform API", version="1.4.0")
 templates = Jinja2Templates(directory="app/ui/templates")
@@ -735,3 +738,32 @@ def wave4_performance_soak(payload: dict, role: str = Depends(get_role)):
 def wave4_performance_soak_reports(limit: int = 20, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return {"reports": list_soak_reports(limit=limit)}
+
+
+@app.get('/wave4.1/auth/status')
+def wave41_auth_status(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return auth_mode_status()
+
+
+@app.get('/wave4.1/auth/verify')
+def wave41_auth_verify(claims: dict = Depends(get_claims_hardened)):
+    return {"ok": True, "claims": claims, "role": role_from_claims_hardened(claims)}
+
+
+@app.post('/wave4.1/policy/evaluate')
+def wave41_policy_evaluate(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return evaluate_with_adapter(payload)
+
+
+@app.get('/wave4.1/queue/readiness')
+def wave41_queue_readiness(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return queue_readiness()
+
+
+@app.post('/wave4.1/queue/startup-verify')
+def wave41_queue_startup_verify(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return startup_verify_queue_connectivity()

@@ -52,6 +52,7 @@ agent:
       webhook_enabled: true
     teams:
       webhook_enabled: true
+      webhook_url: ""
     email:
       webhook_enabled: true
     sms:

@@ -1,19 +1,11 @@
-import os
-import jwt
-from fastapi import Header, HTTPException
+from fastapi import Header
+
+from app.wave41.auth.oidc_jwt import get_claims_hardened, role_from_claims_hardened
 
 
 def get_claims(authorization: str = Header(default="")):
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-    token = authorization.split(" ", 1)[1].strip()
-    secret = os.getenv("JWT_SECRET", "dev-secret")
-    try:
-        claims = jwt.decode(token, secret, algorithms=["HS256"])
-        return claims
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    return get_claims_hardened(authorization)
 
 
 def role_from_claims(claims: dict) -> str:
-    return str(claims.get("role", "viewer"))
+    return role_from_claims_hardened(claims)
