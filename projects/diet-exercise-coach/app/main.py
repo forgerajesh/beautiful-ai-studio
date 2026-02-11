@@ -82,7 +82,18 @@ def init_db():
             diet_adherence integer,
             mood text,
             notes text,
+            photo_url text,
             coach_comment text
+        );
+
+        create table if not exists reminders (
+            id integer primary key autoincrement,
+            user_id integer not null,
+            remind_at text not null,
+            channel text not null,
+            message text not null,
+            active integer default 1,
+            created_at text not null
         );
 
         create table if not exists sessions (
@@ -105,6 +116,10 @@ def init_db():
         cur.execute("alter table users add column target_weeks integer default 16")
     if "workout_days" not in existing_cols:
         cur.execute("alter table users add column workout_days integer default 5")
+
+    checkin_cols = {r["name"] for r in cur.execute("pragma table_info(checkins)").fetchall()}
+    if "photo_url" not in checkin_cols:
+        cur.execute("alter table checkins add column photo_url text")
 
     c.commit()
     c.close()
@@ -526,6 +541,7 @@ def add_checkin(
     diet_adherence: int = Form(...),
     mood: str = Form("ok"),
     notes: str = Form(""),
+    photo_url: str = Form(""),
 ):
     require_owner(request, user_id)
 
@@ -537,10 +553,10 @@ def add_checkin(
 
     c.execute(
         """
-        insert into checkins (user_id,date,weight_kg,steps,workout_done,diet_adherence,mood,notes,coach_comment)
-        values (?,?,?,?,?,?,?,?,?)
+        insert into checkins (user_id,date,weight_kg,steps,workout_done,diet_adherence,mood,notes,photo_url,coach_comment)
+        values (?,?,?,?,?,?,?,?,?,?)
         """,
-        (user_id, now_utc().date().isoformat(), weight_kg, steps, workout_done, diet_adherence, mood, notes, comment),
+        (user_id, now_utc().date().isoformat(), weight_kg, steps, workout_done, diet_adherence, mood, notes, photo_url, comment),
     )
     c.commit()
     c.close()
@@ -596,8 +612,8 @@ def api_checkin(user_id: int, payload: dict):
 
     c.execute(
         """
-        insert into checkins (user_id,date,weight_kg,steps,workout_done,diet_adherence,mood,notes,coach_comment)
-        values (?,?,?,?,?,?,?,?,?)
+        insert into checkins (user_id,date,weight_kg,steps,workout_done,diet_adherence,mood,notes,photo_url,coach_comment)
+        values (?,?,?,?,?,?,?,?,?,?)
         """,
         (
             user_id,
@@ -608,6 +624,7 @@ def api_checkin(user_id: int, payload: dict):
             payload.get("diet_adherence", 70),
             payload.get("mood", "ok"),
             payload.get("notes", ""),
+            payload.get("photo_url", ""),
             comment,
         ),
     )
@@ -619,7 +636,7 @@ def api_checkin(user_id: int, payload: dict):
 @app.get("/api/progress/{user_id}")
 def api_progress(user_id: int):
     c = conn()
-    rows = c.execute("select date,weight_kg,steps,diet_adherence,coach_comment from checkins where user_id=? order by id desc limit 30", (user_id,)).fetchall()
+    rows = c.execute("select date,weight_kg,steps,diet_adherence,photo_url,coach_comment from checkins where user_id=? order by id desc limit 30", (user_id,)).fetchall()
     c.close()
     return {"ok": True, "entries": [dict(r) for r in rows]}
 
@@ -685,3 +702,45 @@ def api_weekly_planner(user_id: int):
 
     planner = weekly_meal_planner(user)
     return {"ok": True, "planner": planner}
+
+
+@app.get("/api/chart/weight/{user_id}")
+def api_weight_chart(user_id: int):
+    c = conn()
+    rows = c.execute(
+        "select date,weight_kg from checkins where user_id=? and weight_kg is not null order by date asc, id asc limit 60",
+        (user_id,),
+    ).fetchall()
+    c.close()
+    points = [{"date": r["date"], "weight_kg": r["weight_kg"]} for r in rows]
+    return {"ok": True, "series": points}
+
+
+@app.post("/api/reminder/{user_id}")
+def api_create_reminder(user_id: int, payload: dict):
+    remind_at = payload.get("remind_at")
+    channel = payload.get("channel", "telegram")
+    message = payload.get("message", "Time for your diet/workout check-in 💪")
+    if not remind_at:
+        raise HTTPException(status_code=400, detail="remind_at is required")
+
+    c = conn()
+    c.execute(
+        "insert into reminders (user_id, remind_at, channel, message, active, created_at) values (?,?,?,?,?,?)",
+        (user_id, remind_at, channel, message, 1, now_utc().isoformat()),
+    )
+    c.commit()
+    rid = c.execute("select last_insert_rowid()").fetchone()[0]
+    c.close()
+    return {"ok": True, "reminder_id": rid, "status": "scheduled_in_app"}
+
+
+@app.get("/api/reminder/{user_id}")
+def api_list_reminders(user_id: int):
+    c = conn()
+    rows = c.execute(
+        "select id, remind_at, channel, message, active, created_at from reminders where user_id=? order by id desc",
+        (user_id,),
+    ).fetchall()
+    c.close()
+    return {"ok": True, "reminders": [dict(r) for r in rows]}

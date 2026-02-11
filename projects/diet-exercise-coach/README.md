@@ -9,6 +9,7 @@ A practical weight-loss coaching app where users can:
 - monitor habit streaks + plateau detection + adaptive recommendations
 - generate daily motivational nudge text for Telegram/WhatsApp integration
 - food library + meal swap suggestions + weekly meal planner + shopping list
+- weight chart data API + photo check-ins + in-app reminder scheduler
 
 ## Run
 ```bash
@@ -31,6 +32,9 @@ Open: `http://localhost:8077`
 - `GET /api/food/library/{user_id}`
 - `POST /api/meal/swap/{user_id}`
 - `GET /api/planner/weekly/{user_id}`
+- `GET /api/chart/weight/{user_id}`
+- `POST /api/reminder/{user_id}`
+- `GET /api/reminder/{user_id}`
 
 ## Product upgrades included
 - Session-based auth for web app (`/login`, `/logout`)
