@@ -19,7 +19,7 @@ import {
   listWave6Budgets, setWave6Budget, trackWave6Usage, getWave6Throttle,
 } from './api'
 
-const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Wave4.1', 'Wave5', 'Final Hardening', 'Tenants', 'Logs']
+const TABS = ['Dashboard', 'Execution', 'Data', 'Integrations', 'Quality', 'Enterprise', 'Admin', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -213,7 +213,7 @@ export default function App() {
           <div className="kpi"><span>ETL Status</span><strong>{etlReport?.status || 'N/A'}</strong></div>
         </section>
 
-        {activeTab === 'Overview' && (
+        {activeTab === 'Dashboard' && (
           <div className="panel-grid">
             <Card title="Quick Run"><button onClick={onRunSuite}>Run Full Suite</button><button onClick={onRunAllAgents}>Run All Agents</button></Card>
             <Card title="Agent Command"><input value={message} onChange={(e) => setMessage(e.target.value)} style={{ width: '70%' }} /><button onClick={onSendMessage}>Send</button></Card>
@@ -222,7 +222,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'Runs' && (
+        {activeTab === 'Execution' && (
           <div className="panel-grid">
             <Card title="Agents">{agents.map((a) => <div key={a}>{a} <button onClick={() => onRunAgent(a)}>Run</button></div>)}</Card>
             <Card title="Workflows">{workflows.map((w) => <div key={w}><code>{w}</code> <button onClick={() => onRunWorkflow(w)}>Run</button></div>)}</Card>
@@ -234,7 +234,7 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'Data & ETL' && (
+        {activeTab === 'Data' && (
           <div className="panel-grid">
             <Card title="ETL Validation Module">
               <div><select value={etlProfile} onChange={(e) => setEtlProfile(e.target.value)}>{etlProfiles.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}</select><button onClick={runEtlNow}>Run ETL Checks</button></div>
@@ -262,18 +262,18 @@ export default function App() {
           <Card title="QA Artifacts"><input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await generateArtifacts({ product_name: artifactProduct }), null, 2))}>Generate</button></Card>
         </div>}
 
-        {activeTab === 'Governance' && <div className="panel-grid">
+        {activeTab === 'Quality' && <div className="panel-grid">
           <Card title="HITL Queue">{(hitlQueue || []).slice(-20).reverse().map((c) => <div key={c.id}><code>{c.id}</code> {c.title} {c.status !== 'APPROVED' && <button onClick={async () => { setOutput(JSON.stringify(await approveWave3Checkpoint(c.id, 'ui-approver'), null, 2)); refreshExecutive() }}>Approve</button>}</div>)}</Card>
           <Card title="Contract + Traceability"><input value={contractPath} onChange={(e) => setContractPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await validateContract(contractPath), null, 2))}>Validate Contract</button><input value={traceReqPath} onChange={(e) => setTraceReqPath(e.target.value)} /><input value={traceTestsPath} onChange={(e) => setTraceTestsPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await buildTraceability({ requirements_path: traceReqPath, tests_path: traceTestsPath }), null, 2))}>Build Traceability</button></Card>
         </div>}
 
-        {activeTab === 'Advanced' && <div className="panel-grid">
+        {activeTab === 'Quality' && <div className="panel-grid">
           <Card title="Flaky"><input value={flakyTestId} onChange={(e) => setFlakyTestId(e.target.value)} /><label>passed<input type="checkbox" checked={flakyPassed} onChange={(e) => setFlakyPassed(e.target.checked)} /></label><button onClick={async () => setOutput(JSON.stringify(await recordFlaky(flakyTestId, flakyPassed), null, 2))}>Record</button><button onClick={async () => setOutput(JSON.stringify(await listFlaky(), null, 2))}>List</button></Card>
           <Card title="Promotion"><input value={promotionFrom} onChange={(e) => setPromotionFrom(e.target.value)} /><input value={promotionTo} onChange={(e) => setPromotionTo(e.target.value)} /><input value={promotionCounts} onChange={(e) => setPromotionCounts(e.target.value)} /><button onClick={async () => { let counts = {}; try { counts = JSON.parse(promotionCounts) } catch {}; setOutput(JSON.stringify(await evalPromotion({ from: promotionFrom, to: promotionTo, counts }), null, 2)) }}>Evaluate</button></Card>
           <Card title="Visual + Perf + Chaos"><input value={visualName} onChange={(e) => setVisualName(e.target.value)} /><input value={visualPath} onChange={(e) => setVisualPath(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await compareVisual(visualName, visualPath), null, 2))}>Compare Visual</button><input value={perfSamples} onChange={(e) => setPerfSamples(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await perfPercentiles(perfSamples.split(',').map(x => parseInt(x.trim(), 10)).filter(x => !Number.isNaN(x))), null, 2))}>P50/P95/P99</button><input value={chaosScenario} onChange={(e) => setChaosScenario(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await runChaos(chaosScenario), null, 2))}>Run Chaos</button></Card>
         </div>}
 
-        {activeTab === 'Wave4' && <div className="panel-grid">
+        {activeTab === 'Enterprise' && <div className="panel-grid">
           <Card title="Contract Execution (Real Endpoint)">
             <input value={wave4ProviderUrl} onChange={(e) => setWave4ProviderUrl(e.target.value)} placeholder="Provider Base URL" />
             <input value={wave4ContractPath} onChange={(e) => setWave4ContractPath(e.target.value)} placeholder="Contract path" />
@@ -308,7 +308,7 @@ export default function App() {
           </Card>
         </div>}
 
-        {activeTab === 'Wave4.1' && <div className="panel-grid">
+        {activeTab === 'Enterprise' && <div className="panel-grid">
           <Card title="Auth Hardening Status">
             <button onClick={async () => { const r = await getWave41AuthStatus(); setWave41AuthStatus(r); setOutput(JSON.stringify(r, null, 2)) }}>Refresh Auth Mode</button>
             <pre>{JSON.stringify(wave41AuthStatus || {}, null, 2)}</pre>
@@ -341,7 +341,7 @@ export default function App() {
           </Card>
         </div>}
 
-        {activeTab === 'Wave5' && <div className="panel-grid">
+        {activeTab === 'Enterprise' && <div className="panel-grid">
           <Card title="Mobile Cloud Run (BrowserStack/SauceLabs)">
             <select value={wave5Provider} onChange={(e) => setWave5Provider(e.target.value)}>
               <option value="browserstack">browserstack</option>
@@ -369,7 +369,7 @@ export default function App() {
           </Card>
         </div>}
 
-        {activeTab === 'Final Hardening' && <div className="panel-grid">
+        {activeTab === 'Enterprise' && <div className="panel-grid">
           <Card title="Compliance Pack">
             <button onClick={async () => { const r = await getWave6Controls({ rbac: true, jwt_auth: true, sso_status: true, scim_audit: true, audit_log: true, alerts: true, backup_drill: true, immutable_retention: true, pii_masking: true, backup: true, restore_validation: true, drill_reports: true }); setWave6Controls(r); setOutput(JSON.stringify(r, null, 2)) }}>Refresh Controls Coverage</button>
             <button onClick={async () => { const r = await getWave6Retention(); setWave6Retention(r); setOutput(JSON.stringify(r, null, 2)) }}>Audit Retention Status</button>
@@ -395,7 +395,7 @@ export default function App() {
           </Card>
         </div>}
 
-        {activeTab === 'Tenants' && <Card title="Multi-tenant Channel Config"><div><select value={tenantId} onChange={(e) => onTenantLoad(e.target.value)}>{tenants.map((t) => <option key={t}>{t}</option>)}</select><button onClick={onTenantSave}>Save Config</button></div><div className="panel-grid">{Object.entries(tenantCfg.channels || {}).map(([name, cfg]) => <Card key={name} title={name}>{Object.entries(cfg).map(([k, v]) => <div key={k}><label>{k}</label><input value={String(v)} onChange={(e) => updateChannelField(name, k, e.target.value)} /></div>)}</Card>)}</div></Card>}
+        {activeTab === 'Admin' && <Card title="Tenant Configuration"><div><select value={tenantId} onChange={(e) => onTenantLoad(e.target.value)}>{tenants.map((t) => <option key={t}>{t}</option>)}</select><button onClick={onTenantSave}>Save Config</button></div><div className="panel-grid">{Object.entries(tenantCfg.channels || {}).map(([name, cfg]) => <Card key={name} title={name}>{Object.entries(cfg).map(([k, v]) => <div key={k}><label>{k}</label><input value={String(v)} onChange={(e) => updateChannelField(name, k, e.target.value)} /></div>)}</Card>)}</div></Card>}
 
         {activeTab === 'Logs' && <div className="panel-grid"><Card title="Realtime Logs"><pre>{JSON.stringify(logs.slice(-25), null, 2)}</pre></Card><Card title="Output"><pre>{output}</pre></Card></div>}
       </main>
