@@ -14,9 +14,12 @@ import {
   runWave4Fuzz, listWave4FuzzReports, runWave4Soak, listWave4SoakReports,
   getWave41AuthStatus, evalWave41Policy, getWave41QueueReadiness, verifyWave41QueueStartup,
   runWave5MobileCloud, getWave5SecretsStatus, runWave5Backup, listWave5Backups, testWave5Alert, sendWave5Alert,
+  getWave6Controls, getWave6Retention, validateWave6Pii, getWave6SsoStatus, listWave6ScimUsers,
+  createWave6ScimUser, deactivateWave6ScimUser, runWave6Drill, getWave6LatestDrill,
+  listWave6Budgets, setWave6Budget, trackWave6Usage, getWave6Throttle,
 } from './api'
 
-const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Wave4.1', 'Wave5', 'Tenants', 'Logs']
+const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Wave4.1', 'Wave5', 'Final Hardening', 'Tenants', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -72,6 +75,13 @@ export default function App() {
   const [wave5Secrets, setWave5Secrets] = useState(null)
   const [wave5Backups, setWave5Backups] = useState([])
   const [wave5AlertChannel, setWave5AlertChannel] = useState('webhook')
+  const [wave6Controls, setWave6Controls] = useState(null)
+  const [wave6Retention, setWave6Retention] = useState(null)
+  const [wave6Sso, setWave6Sso] = useState(null)
+  const [wave6ScimUsers, setWave6ScimUsers] = useState([])
+  const [wave6Drill, setWave6Drill] = useState(null)
+  const [wave6Budgets, setWave6Budgets] = useState({})
+  const [wave6Scope, setWave6Scope] = useState('agent:playwright')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -106,6 +116,12 @@ export default function App() {
       setWave41QueueStatus(q41)
       setWave5Secrets(await getWave5SecretsStatus())
       setWave5Backups((await listWave5Backups()).backups || [])
+      setWave6Controls(await getWave6Controls({ rbac: true, jwt_auth: true, alerts: true, backup: true }))
+      setWave6Retention(await getWave6Retention())
+      setWave6Sso(await getWave6SsoStatus())
+      setWave6ScimUsers((await listWave6ScimUsers()).users || [])
+      setWave6Drill(await getWave6LatestDrill())
+      setWave6Budgets((await listWave6Budgets()).budgets || {})
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -350,6 +366,32 @@ export default function App() {
             <button onClick={async () => setOutput(JSON.stringify(await sendWave5Alert({ channel: wave5AlertChannel, payload: { summary: 'Wave5 manual alert', severity: 'critical' } }), null, 2))}>Send Alert</button>
             <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: 'whatsapp', chat_id: '', text: 'Wave5 WhatsApp smoke' }), null, 2))}>WhatsApp Smoke</button>
             <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: 'signal', chat_id: '', text: 'Wave5 Signal smoke' }), null, 2))}>Signal Smoke</button>
+          </Card>
+        </div>}
+
+        {activeTab === 'Final Hardening' && <div className="panel-grid">
+          <Card title="Compliance Pack">
+            <button onClick={async () => { const r = await getWave6Controls({ rbac: true, jwt_auth: true, sso_status: true, scim_audit: true, audit_log: true, alerts: true, backup_drill: true, immutable_retention: true, pii_masking: true, backup: true, restore_validation: true, drill_reports: true }); setWave6Controls(r); setOutput(JSON.stringify(r, null, 2)) }}>Refresh Controls Coverage</button>
+            <button onClick={async () => { const r = await getWave6Retention(); setWave6Retention(r); setOutput(JSON.stringify(r, null, 2)) }}>Audit Retention Status</button>
+            <button onClick={async () => setOutput(JSON.stringify(await validateWave6Pii({ user: { email: 'ceo@example.com', phone: '+1 555 010 9999' }, card: '4111 1111 1111 1111' }), null, 2))}>PII Masking Validate</button>
+            <pre>{JSON.stringify(wave6Controls || {}, null, 2)}</pre>
+          </Card>
+          <Card title="SSO + SCIM">
+            <button onClick={async () => { const r = await getWave6SsoStatus(); setWave6Sso(r); setOutput(JSON.stringify(r, null, 2)) }}>SSO Readiness</button>
+            <button onClick={async () => { const r = await createWave6ScimUser({ id: 'u-ui', userName: 'ui.user@testops.local', displayName: 'UI User', active: true }); setOutput(JSON.stringify(r, null, 2)); setWave6ScimUsers((await listWave6ScimUsers()).users || []) }}>Create SCIM User</button>
+            <button onClick={async () => { const r = await deactivateWave6ScimUser('u-ui'); setOutput(JSON.stringify(r, null, 2)); setWave6ScimUsers((await listWave6ScimUsers()).users || []) }}>Deactivate SCIM User</button>
+            <div>SCIM users: <b>{wave6ScimUsers.length}</b></div>
+            <pre>{JSON.stringify(wave6Sso || {}, null, 2)}</pre>
+          </Card>
+          <Card title="HA/DR + Cost Governance">
+            <button onClick={async () => { const r = await runWave6Drill('ui'); setWave6Drill(r); setOutput(JSON.stringify(r, null, 2)) }}>Run HA/DR Drill</button>
+            <button onClick={async () => { const r = await getWave6LatestDrill(); setWave6Drill(r); setOutput(JSON.stringify(r, null, 2)) }}>Latest Drill Report</button>
+            <div>Latest drill: <b>{wave6Drill?.report?.drill_id || wave6Drill?.drill_id || 'N/A'}</b></div>
+            <input value={wave6Scope} onChange={(e) => setWave6Scope(e.target.value)} placeholder="scope" />
+            <button onClick={async () => { const r = await setWave6Budget({ scope: wave6Scope, daily_limit: 100, warning_threshold: 0.8 }); setOutput(JSON.stringify(r, null, 2)); setWave6Budgets((await listWave6Budgets()).budgets || {}) }}>Set Budget</button>
+            <button onClick={async () => setOutput(JSON.stringify(await trackWave6Usage({ scope: wave6Scope, amount: 85, meta: { source: 'ui' } }), null, 2))}>Track Usage</button>
+            <button onClick={async () => setOutput(JSON.stringify(await getWave6Throttle(wave6Scope), null, 2))}>Throttle Decision</button>
+            <pre>{JSON.stringify(wave6Budgets || {}, null, 2)}</pre>
           </Card>
         </div>}
 

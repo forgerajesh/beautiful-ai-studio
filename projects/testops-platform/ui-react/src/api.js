@@ -171,3 +171,38 @@ export const sendWave5Alert = (payload) => api('/wave5/alerts/send', {
   method: 'POST',
   body: JSON.stringify(payload),
 })
+
+export const getWave6Controls = (features = {}) => api('/wave6/compliance/controls', {
+  method: 'POST',
+  body: JSON.stringify({ features }),
+})
+export const getWave6Retention = () => api('/wave6/compliance/audit-retention')
+export const validateWave6Pii = (sample) => api('/wave6/compliance/pii-mask/validate', {
+  method: 'POST',
+  body: JSON.stringify({ sample }),
+})
+export const getWave6SsoStatus = () => api('/wave6/sso/status')
+export const listWave6ScimUsers = () => api('/wave6/scim/users')
+export const createWave6ScimUser = (user, actor = 'ui-operator') => api('/wave6/scim/users', {
+  method: 'POST',
+  body: JSON.stringify({ user, actor }),
+})
+export const deactivateWave6ScimUser = (user_id, actor = 'ui-operator') => api(`/wave6/scim/users/${user_id}/deactivate`, {
+  method: 'POST',
+  body: JSON.stringify({ actor }),
+})
+export const runWave6Drill = (label = 'ui-manual') => api('/wave6/ha-dr/drill/run', {
+  method: 'POST',
+  body: JSON.stringify({ label }),
+})
+export const getWave6LatestDrill = () => api('/wave6/ha-dr/drill/latest')
+export const listWave6Budgets = () => api('/wave6/cost/policies')
+export const setWave6Budget = (payload) => api('/wave6/cost/policies', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const trackWave6Usage = (payload) => api('/wave6/cost/usage/track', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const getWave6Throttle = (scope) => api(`/wave6/cost/throttle/${scope}`)
