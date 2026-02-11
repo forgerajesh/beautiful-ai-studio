@@ -111,6 +111,8 @@ pre {
 .risk-med { background: #fffbeb; border-color: #fcd34d; }
 .risk-high { background: #fef2f2; border-color: #fca5a5; }
 .etl-summary { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; color: #334155; }
+.lifecycle-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.wizard-steps { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 
 @media (max-width: 980px) {
   .app-shell { grid-template-columns: 1fr; }

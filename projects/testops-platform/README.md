@@ -390,3 +390,38 @@ Deployment details: `docs/DEPLOYMENT.md`
   - Budget warnings are integrated into Wave5 alerting path.
 - React UI:
   - New **Final Hardening** tab for compliance, SSO/SCIM, HA/DR, and cost governance actions.
+
+## QA Lifecycle (End-to-End)
+
+A new **QA Lifecycle** UI tab now provides one flow for:
+1. Add requirements
+2. Generate strategy
+3. Generate test design
+4. Generate test cases
+5. Build test plan
+6. Map testing types
+7. Execute
+8. Review reports + traceability
+
+Lifecycle API endpoints:
+- Requirements + versioning (persisted in `reports/requirements-store.json`)
+  - `GET /qa-lifecycle/requirements`
+  - `POST /qa-lifecycle/requirements`
+  - `PUT /qa-lifecycle/requirements/{requirement_id}`
+  - `DELETE /qa-lifecycle/requirements/{requirement_id}`
+  - `GET /qa-lifecycle/requirements/{requirement_id}/versions`
+- Generators / planners
+  - `POST /qa-lifecycle/strategy`
+  - `POST /qa-lifecycle/design`
+  - `POST /qa-lifecycle/test-cases`
+  - `POST /qa-lifecycle/test-plan`
+  - `POST /qa-lifecycle/testing-types`
+  - `POST /qa-lifecycle/execute`
+  - `POST /qa-lifecycle/state`
+- Run persistence (persisted in `reports/qa-lifecycle-runs.json`)
+  - `POST /qa-lifecycle/runs`
+  - `GET /qa-lifecycle/runs`
+  - `GET /qa-lifecycle/runs/{run_id}`
+- Optional review pushes
+  - `POST /qa-lifecycle/push/jira`
+  - `POST /qa-lifecycle/push/testrail`

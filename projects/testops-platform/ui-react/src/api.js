@@ -206,3 +206,59 @@ export const trackWave6Usage = (payload) => api('/wave6/cost/usage/track', {
   body: JSON.stringify(payload),
 })
 export const getWave6Throttle = (scope) => api(`/wave6/cost/throttle/${scope}`)
+
+export const listLifecycleRequirements = () => api('/qa-lifecycle/requirements')
+export const createLifecycleRequirement = (payload) => api('/qa-lifecycle/requirements', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const updateLifecycleRequirement = (requirementId, payload) => api(`/qa-lifecycle/requirements/${requirementId}`, {
+  method: 'PUT',
+  body: JSON.stringify(payload),
+})
+export const deleteLifecycleRequirement = (requirementId) => api(`/qa-lifecycle/requirements/${requirementId}`, {
+  method: 'DELETE',
+})
+export const getLifecycleRequirementVersions = (requirementId) => api(`/qa-lifecycle/requirements/${requirementId}/versions`)
+export const generateLifecycleStrategy = (payload = {}) => api('/qa-lifecycle/strategy', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const generateLifecycleDesign = (payload = {}) => api('/qa-lifecycle/design', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const generateLifecycleTestCases = (payload = {}) => api('/qa-lifecycle/test-cases', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const buildLifecycleTestPlan = (payload = {}) => api('/qa-lifecycle/test-plan', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const mapLifecycleTestingTypes = (payload = {}) => api('/qa-lifecycle/testing-types', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const executeLifecycle = (payload = {}) => api('/qa-lifecycle/execute', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const getLifecycleState = (payload = {}) => api('/qa-lifecycle/state', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const saveLifecycleRun = (payload = {}) => api('/qa-lifecycle/runs', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const listLifecycleRuns = () => api('/qa-lifecycle/runs')
+export const getLifecycleRun = (runId) => api(`/qa-lifecycle/runs/${runId}`)
+export const pushLifecycleToJira = (payload = {}) => api('/qa-lifecycle/push/jira', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const pushLifecycleToTestRail = (payload = {}) => api('/qa-lifecycle/push/testrail', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})

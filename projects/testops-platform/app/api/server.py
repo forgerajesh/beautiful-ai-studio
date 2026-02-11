@@ -35,6 +35,23 @@ from app.v31.governance.audit import log_approval, list_audit
 from app.integrations.jira import create_jira_issue
 from app.integrations.testrail import create_test_run
 from app.integrations.artifacts import generate_testcases, generate_testplan, generate_teststrategy
+from app.qa_lifecycle import (
+    create_requirement,
+    list_requirements,
+    update_requirement,
+    delete_requirement,
+    get_requirement_versions,
+    generate_strategy,
+    generate_test_design,
+    generate_test_cases,
+    build_test_plan,
+    map_testing_types,
+    execute_lifecycle,
+    get_lifecycle_state,
+    save_lifecycle_run,
+    list_lifecycle_runs,
+    get_lifecycle_run,
+)
 from app.wave1.queue.tasks import run_agent_task, run_all_agents_task
 from app.wave1.auth.jwt_auth import get_claims, role_from_claims
 from app.wave1.observability.otel import otel_status
@@ -514,6 +531,127 @@ def wave5_mobile_cloud_last_report(role: str = Depends(get_role)):
 def artifacts_read(payload: dict, role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return read_artifact(str(payload.get('path', '')))
+
+
+@app.get('/qa-lifecycle/requirements')
+def qa_lifecycle_requirements(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"requirements": list_requirements()}
+
+
+@app.post('/qa-lifecycle/requirements')
+def qa_lifecycle_requirements_create(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return {"ok": True, "requirement": create_requirement(payload)}
+
+
+@app.put('/qa-lifecycle/requirements/{requirement_id}')
+def qa_lifecycle_requirements_update(requirement_id: str, payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    row = update_requirement(requirement_id, payload)
+    return {"ok": row is not None, "requirement": row}
+
+
+@app.delete('/qa-lifecycle/requirements/{requirement_id}')
+def qa_lifecycle_requirements_delete(requirement_id: str, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return {"ok": delete_requirement(requirement_id)}
+
+
+@app.get('/qa-lifecycle/requirements/{requirement_id}/versions')
+def qa_lifecycle_requirements_versions(requirement_id: str, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"requirement_id": requirement_id, "versions": get_requirement_versions(requirement_id)}
+
+
+@app.post('/qa-lifecycle/strategy')
+def qa_lifecycle_strategy(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements = payload.get("requirements") or list_requirements()
+    return generate_strategy(requirements)
+
+
+@app.post('/qa-lifecycle/design')
+def qa_lifecycle_design(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements = payload.get("requirements") or list_requirements()
+    strategy = payload.get("strategy") or generate_strategy(requirements)
+    return generate_test_design(requirements, strategy)
+
+
+@app.post('/qa-lifecycle/test-cases')
+def qa_lifecycle_test_cases(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements = payload.get("requirements") or list_requirements()
+    strategy = payload.get("strategy") or generate_strategy(requirements)
+    design = payload.get("design") or generate_test_design(requirements, strategy)
+    return generate_test_cases(requirements, strategy, design)
+
+
+@app.post('/qa-lifecycle/test-plan')
+def qa_lifecycle_test_plan(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements = payload.get("requirements") or list_requirements()
+    test_cases = payload.get("test_cases") or generate_test_cases(requirements, generate_strategy(requirements), generate_test_design(requirements, generate_strategy(requirements)))
+    return build_test_plan(requirements, test_cases)
+
+
+@app.post('/qa-lifecycle/testing-types')
+def qa_lifecycle_testing_types(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements = payload.get("requirements") or list_requirements()
+    test_cases = payload.get("test_cases") or generate_test_cases(requirements, generate_strategy(requirements), generate_test_design(requirements, generate_strategy(requirements)))
+    return map_testing_types(requirements, test_cases)
+
+
+@app.post('/qa-lifecycle/execute')
+def qa_lifecycle_execute(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return execute_lifecycle(payload)
+
+
+@app.post('/qa-lifecycle/state')
+def qa_lifecycle_state(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    requirements = payload.get("requirements") or list_requirements()
+    return get_lifecycle_state(requirements, payload.get("run"))
+
+
+@app.post('/qa-lifecycle/runs')
+def qa_lifecycle_run_save(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return {"ok": True, "run": save_lifecycle_run(payload)}
+
+
+@app.get('/qa-lifecycle/runs')
+def qa_lifecycle_runs_list(limit: int = 20, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"runs": list_lifecycle_runs(limit=limit)}
+
+
+@app.get('/qa-lifecycle/runs/{run_id}')
+def qa_lifecycle_runs_get(run_id: str, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"run": get_lifecycle_run(run_id)}
+
+
+@app.post('/qa-lifecycle/push/jira')
+def qa_lifecycle_push_jira(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return create_jira_issue(
+        summary=str(payload.get("summary", "QA Lifecycle review summary")),
+        description=str(payload.get("description", "Pushed from QA Lifecycle review")),
+        issue_type=str(payload.get("issue_type", "Task")),
+    )
+
+
+@app.post('/qa-lifecycle/push/testrail')
+def qa_lifecycle_push_testrail(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return create_test_run(
+        name=str(payload.get("name", "QA Lifecycle Run")),
+        case_ids=payload.get("case_ids"),
+    )
 
 
 @app.get('/etl/profiles')

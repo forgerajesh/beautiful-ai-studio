@@ -141,3 +141,49 @@ pytest -q
 
 ### 6) Tests
 - Added `tests/test_wave6.py` for new modules/endpoints with alerting mock coverage.
+
+## QA Lifecycle End-to-End Pack
+
+### Delivered
+- Backend lifecycle domain module:
+  - `app/qa_lifecycle/service.py`
+- New lifecycle APIs:
+  - Requirements CRUD + versioning:
+    - `GET/POST /qa-lifecycle/requirements`
+    - `PUT/DELETE /qa-lifecycle/requirements/{requirement_id}`
+    - `GET /qa-lifecycle/requirements/{requirement_id}/versions`
+  - Designer/generator/planner/orchestrator:
+    - `POST /qa-lifecycle/strategy`
+    - `POST /qa-lifecycle/design`
+    - `POST /qa-lifecycle/test-cases`
+    - `POST /qa-lifecycle/test-plan`
+    - `POST /qa-lifecycle/testing-types`
+    - `POST /qa-lifecycle/execute`
+    - `POST /qa-lifecycle/state`
+  - Run persistence/reload:
+    - `POST /qa-lifecycle/runs`
+    - `GET /qa-lifecycle/runs`
+    - `GET /qa-lifecycle/runs/{run_id}`
+  - Optional review pushes:
+    - `POST /qa-lifecycle/push/jira`
+    - `POST /qa-lifecycle/push/testrail`
+- Persistence paths:
+  - `reports/requirements-store.json`
+  - `reports/qa-lifecycle-runs.json`
+- UI integration:
+  - Added new **QA Lifecycle** tab to `ui-react/src/App.jsx` with stepper/wizard flow (1..8)
+  - Added lifecycle API bindings in `ui-react/src/api.js`
+  - Added minor Apple-like UI styling refinements in `ui-react/src/styles.css`
+- Artifact/traceability linkage:
+  - Lifecycle generation uses existing artifact generators and traceability builder during run save.
+
+### Tests
+- Added `tests/test_qa_lifecycle.py` with:
+  - API lifecycle flow coverage
+  - UI-dataflow-equivalent save/reload integration test (API-level)
+
+### Verification
+```bash
+cd /home/vnc/.openclaw/workspace/projects/testops-platform
+pytest -q
+```

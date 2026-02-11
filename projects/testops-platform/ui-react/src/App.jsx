@@ -17,9 +17,13 @@ import {
   getWave6Controls, getWave6Retention, validateWave6Pii, getWave6SsoStatus, listWave6ScimUsers,
   createWave6ScimUser, deactivateWave6ScimUser, runWave6Drill, getWave6LatestDrill,
   listWave6Budgets, setWave6Budget, trackWave6Usage, getWave6Throttle,
+  listLifecycleRequirements, createLifecycleRequirement, updateLifecycleRequirement, deleteLifecycleRequirement,
+  generateLifecycleStrategy, generateLifecycleDesign, generateLifecycleTestCases, buildLifecycleTestPlan,
+  mapLifecycleTestingTypes, executeLifecycle, getLifecycleState, saveLifecycleRun, listLifecycleRuns,
+  pushLifecycleToJira, pushLifecycleToTestRail,
 } from './api'
 
-const TABS = ['Dashboard', 'Execution', 'Data', 'Integrations', 'Quality', 'Enterprise', 'Admin', 'Logs']
+const TABS = ['Dashboard', 'Execution', 'Data', 'Integrations', 'QA Lifecycle', 'Quality', 'Enterprise', 'Admin', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -82,6 +86,12 @@ export default function App() {
   const [wave6Drill, setWave6Drill] = useState(null)
   const [wave6Budgets, setWave6Budgets] = useState({})
   const [wave6Scope, setWave6Scope] = useState('agent:playwright')
+  const [lifecycleRequirements, setLifecycleRequirements] = useState([])
+  const [lifecycleRuns, setLifecycleRuns] = useState([])
+  const [lifecycleCurrent, setLifecycleCurrent] = useState({})
+  const [lifecycleName, setLifecycleName] = useState('Checkout flow must complete under 2s')
+  const [lifecycleDomain, setLifecycleDomain] = useState('functional')
+  const [lifecycleRisk, setLifecycleRisk] = useState('high')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -90,11 +100,12 @@ export default function App() {
 
   useEffect(() => {
     ;(async () => {
-      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr, w4d, w4f, w4s, a41, q41] = await Promise.all([
+      const [c, a, w, t, ex, tr, cp, af, tdp, etlp, etlr, w4d, w4f, w4s, a41, q41, lr, lrs] = await Promise.all([
         getChannels(), getAgents(), getWorkflows(), getTenants(), getWave3Executive(), getWave3Trends(), listWave3Checkpoints(),
         listArtifacts(), getTestdataProfiles(), getEtlProfiles(), getLastEtlReport(),
         listWave4DriftReports(), listWave4FuzzReports(), listWave4SoakReports(),
         getWave41AuthStatus(), getWave41QueueReadiness(),
+        listLifecycleRequirements(), listLifecycleRuns(),
       ])
       setChannels(c.supported || [])
       setAgents(a.agents || [])
@@ -114,6 +125,8 @@ export default function App() {
       setWave4SoakReports(w4s.reports || [])
       setWave41AuthStatus(a41)
       setWave41QueueStatus(q41)
+      setLifecycleRequirements(lr.requirements || [])
+      setLifecycleRuns(lrs.runs || [])
       setWave5Secrets(await getWave5SecretsStatus())
       setWave5Backups((await listWave5Backups()).backups || [])
       setWave6Controls(await getWave6Controls({ rbac: true, jwt_auth: true, alerts: true, backup: true }))
@@ -182,6 +195,35 @@ export default function App() {
         [name]: { ...((prev.channels || {})[name] || {}), [key]: value },
       },
     }))
+  }
+
+  const refreshLifecycle = async () => {
+    const [lr, lrs] = await Promise.all([listLifecycleRequirements(), listLifecycleRuns()])
+    setLifecycleRequirements(lr.requirements || [])
+    setLifecycleRuns(lrs.runs || [])
+  }
+
+  const runLifecycleStep = async (step) => {
+    const requirements = lifecycleRequirements
+    const strategy = lifecycleCurrent.strategy || await generateLifecycleStrategy({ requirements })
+    const design = lifecycleCurrent.design || await generateLifecycleDesign({ requirements, strategy })
+    const testCases = lifecycleCurrent.test_cases || await generateLifecycleTestCases({ requirements, strategy, design })
+
+    if (step === 'strategy') return setLifecycleCurrent((s) => ({ ...s, strategy }))
+    if (step === 'design') return setLifecycleCurrent((s) => ({ ...s, strategy, design }))
+    if (step === 'cases') return setLifecycleCurrent((s) => ({ ...s, strategy, design, test_cases: testCases }))
+
+    const plan = lifecycleCurrent.plan || await buildLifecycleTestPlan({ requirements, test_cases: testCases })
+    if (step === 'plan') return setLifecycleCurrent((s) => ({ ...s, strategy, design, test_cases: testCases, plan }))
+
+    const types = lifecycleCurrent.types_mapping || await mapLifecycleTestingTypes({ requirements, test_cases: testCases })
+    if (step === 'types') return setLifecycleCurrent((s) => ({ ...s, strategy, design, test_cases: testCases, plan, types_mapping: types }))
+
+    const execution = await executeLifecycle({ suites: ['functional', 'api', 'security', 'non-functional'] })
+    const state = await getLifecycleState({ requirements, run: { execution } })
+    const next = { ...lifecycleCurrent, strategy, design, test_cases: testCases, plan, types_mapping: types, execution, state }
+    setLifecycleCurrent(next)
+    setOutput(JSON.stringify(next, null, 2))
   }
 
   return (
@@ -260,6 +302,68 @@ export default function App() {
           <Card title="Jira"><input value={jiraSummary} onChange={(e) => setJiraSummary(e.target.value)} /><input value={jiraDesc} onChange={(e) => setJiraDesc(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await createJiraIssue({ summary: jiraSummary, description: jiraDesc, issue_type: 'Task' }), null, 2))}>Create Jira Issue</button></Card>
           <Card title="TestRail"><input value={trRunName} onChange={(e) => setTrRunName(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await createTestRailRun({ name: trRunName }), null, 2))}>Create TestRail Run</button></Card>
           <Card title="QA Artifacts"><input value={artifactProduct} onChange={(e) => setArtifactProduct(e.target.value)} /><button onClick={async () => setOutput(JSON.stringify(await generateArtifacts({ product_name: artifactProduct }), null, 2))}>Generate</button></Card>
+        </div>}
+
+        {activeTab === 'QA Lifecycle' && <div className="panel-grid">
+          <Card title="Step 1 — Add requirements">
+            <input value={lifecycleName} onChange={(e) => setLifecycleName(e.target.value)} placeholder="Requirement title" />
+            <select value={lifecycleDomain} onChange={(e) => setLifecycleDomain(e.target.value)}>
+              <option value="functional">functional</option>
+              <option value="api">api</option>
+              <option value="non-functional">non-functional</option>
+              <option value="security">security</option>
+              <option value="mobile">mobile</option>
+              <option value="etl">etl</option>
+            </select>
+            <select value={lifecycleRisk} onChange={(e) => setLifecycleRisk(e.target.value)}>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+            <button onClick={async () => {
+              await createLifecycleRequirement({ title: lifecycleName, domain: lifecycleDomain, risk: lifecycleRisk, status: 'planned' })
+              await refreshLifecycle()
+            }}>Add</button>
+            {(lifecycleRequirements || []).slice(-8).reverse().map((r) => (
+              <div key={r.id} className="lifecycle-row">
+                <code>{r.id}</code> {r.title} [{r.domain}/{r.risk}] v{r.version}
+                <button onClick={async () => { await updateLifecycleRequirement(r.id, { status: 'approved' }); await refreshLifecycle() }}>Approve</button>
+                <button onClick={async () => { await deleteLifecycleRequirement(r.id); await refreshLifecycle() }}>Delete</button>
+              </div>
+            ))}
+          </Card>
+
+          <Card title="Steps 2-7 — Wizard flow">
+            <div className="wizard-steps">
+              <button onClick={() => runLifecycleStep('strategy')}>2. Strategy</button>
+              <button onClick={() => runLifecycleStep('design')}>3. Test design</button>
+              <button onClick={() => runLifecycleStep('cases')}>4. Test cases</button>
+              <button onClick={() => runLifecycleStep('plan')}>5. Test plan</button>
+              <button onClick={() => runLifecycleStep('types')}>6. Testing types</button>
+              <button onClick={() => runLifecycleStep('execute')}>7. Execute</button>
+            </div>
+            <pre>{JSON.stringify(lifecycleCurrent, null, 2)}</pre>
+          </Card>
+
+          <Card title="Step 8 — Review reports + traceability">
+            <button onClick={async () => {
+              const saved = await saveLifecycleRun({
+                requirements: lifecycleRequirements,
+                strategy: lifecycleCurrent.strategy,
+                design: lifecycleCurrent.design,
+                test_cases: lifecycleCurrent.test_cases,
+                plan: lifecycleCurrent.plan,
+                types_mapping: lifecycleCurrent.types_mapping,
+                execution: lifecycleCurrent.execution,
+              })
+              setOutput(JSON.stringify(saved, null, 2))
+              await refreshLifecycle()
+            }}>Save Lifecycle Run</button>
+            <button onClick={async () => setOutput(JSON.stringify(await pushLifecycleToJira({ summary: 'QA Lifecycle Review', description: 'Lifecycle run reviewed in UI' }), null, 2))}>Push Jira</button>
+            <button onClick={async () => setOutput(JSON.stringify(await pushLifecycleToTestRail({ name: 'QA Lifecycle UI Run' }), null, 2))}>Push TestRail</button>
+            <div className="lifecycle-row"><b>Prior runs:</b> {(lifecycleRuns || []).length}</div>
+            {(lifecycleRuns || []).slice(0, 6).map((r) => <div key={r.run_id} className="lifecycle-row"><code>{r.run_id}</code> {r.created_at}</div>)}
+          </Card>
         </div>}
 
         {activeTab === 'Quality' && <div className="panel-grid">

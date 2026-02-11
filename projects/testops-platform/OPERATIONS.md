@@ -387,3 +387,51 @@ curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" 
   http://localhost:8090/wave6/cost/usage/track
 curl -H "X-API-Key: viewer-token" http://localhost:8090/wave6/cost/throttle/agent:playwright
 ```
+
+---
+
+## QA Lifecycle (UI-driven end-to-end)
+
+Persistence:
+- `reports/requirements-store.json`
+- `reports/qa-lifecycle-runs.json`
+
+API commands:
+```bash
+# 1) Add/list/update requirements
+curl -H "X-API-Key: viewer-token" http://localhost:8090/qa-lifecycle/requirements
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"title":"Checkout under 2s","domain":"functional","risk":"high"}' \
+  http://localhost:8090/qa-lifecycle/requirements
+curl -X PUT -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"status":"approved"}' \
+  http://localhost:8090/qa-lifecycle/requirements/REQ-XXXXX
+
+# 2..7) Generate strategy/design/cases/plan/types + execute
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{}' http://localhost:8090/qa-lifecycle/strategy
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{}' http://localhost:8090/qa-lifecycle/design
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{}' http://localhost:8090/qa-lifecycle/test-cases
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{}' http://localhost:8090/qa-lifecycle/test-plan
+curl -X POST -H "X-API-Key: viewer-token" -H "Content-Type: application/json" \
+  -d '{}' http://localhost:8090/qa-lifecycle/testing-types
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"suites":["functional","api","security"]}' http://localhost:8090/qa-lifecycle/execute
+
+# 8) Save + reload runs
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"requirements":[],"strategy":{},"design":{},"test_cases":{},"plan":{},"types_mapping":{},"execution":{}}' \
+  http://localhost:8090/qa-lifecycle/runs
+curl -H "X-API-Key: viewer-token" http://localhost:8090/qa-lifecycle/runs
+```
+
+Optional pushes from review screen:
+```bash
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"summary":"QA Lifecycle review"}' http://localhost:8090/qa-lifecycle/push/jira
+curl -X POST -H "X-API-Key: operator-token" -H "Content-Type: application/json" \
+  -d '{"name":"QA Lifecycle Run"}' http://localhost:8090/qa-lifecycle/push/testrail
+```
