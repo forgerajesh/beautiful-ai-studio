@@ -13,9 +13,10 @@ import {
   sendNativeChannelMessage, executeWave4Contract, analyzeWave4Drift, listWave4DriftReports,
   runWave4Fuzz, listWave4FuzzReports, runWave4Soak, listWave4SoakReports,
   getWave41AuthStatus, evalWave41Policy, getWave41QueueReadiness, verifyWave41QueueStartup,
+  runWave5MobileCloud, getWave5SecretsStatus, runWave5Backup, listWave5Backups, testWave5Alert, sendWave5Alert,
 } from './api'
 
-const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Wave4.1', 'Tenants', 'Logs']
+const TABS = ['Overview', 'Runs', 'Data & ETL', 'Integrations', 'Governance', 'Advanced', 'Wave4', 'Wave4.1', 'Wave5', 'Tenants', 'Logs']
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('Overview')
@@ -66,6 +67,11 @@ export default function App() {
   const [wave41PolicyInput, setWave41PolicyInput] = useState('{"counts":{"fail":0,"error":0},"critical_security_failures":0}')
   const [wave41QueueStatus, setWave41QueueStatus] = useState(null)
   const [wave41Channel, setWave41Channel] = useState('teams')
+  const [wave5Provider, setWave5Provider] = useState('browserstack')
+  const [wave5Device, setWave5Device] = useState('iPhone 13')
+  const [wave5Secrets, setWave5Secrets] = useState(null)
+  const [wave5Backups, setWave5Backups] = useState([])
+  const [wave5AlertChannel, setWave5AlertChannel] = useState('webhook')
 
   const wsUrl = useMemo(() => {
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -98,6 +104,8 @@ export default function App() {
       setWave4SoakReports(w4s.reports || [])
       setWave41AuthStatus(a41)
       setWave41QueueStatus(q41)
+      setWave5Secrets(await getWave5SecretsStatus())
+      setWave5Backups((await listWave5Backups()).backups || [])
       const tenantList = t.tenants || []
       setTenants(tenantList)
       const first = tenantList[0] || 'default'
@@ -314,6 +322,34 @@ export default function App() {
               </select>
               <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: wave41Channel, chat_id: '', text: 'Wave4.1 channel smoke from UI' }), null, 2))}>Send Smoke</button>
             </div>
+          </Card>
+        </div>}
+
+        {activeTab === 'Wave5' && <div className="panel-grid">
+          <Card title="Mobile Cloud Run (BrowserStack/SauceLabs)">
+            <select value={wave5Provider} onChange={(e) => setWave5Provider(e.target.value)}>
+              <option value="browserstack">browserstack</option>
+              <option value="saucelabs">saucelabs</option>
+            </select>
+            <input value={wave5Device} onChange={(e) => setWave5Device(e.target.value)} />
+            <button onClick={async () => setOutput(JSON.stringify(await runWave5MobileCloud({ provider: wave5Provider, device: wave5Device }), null, 2))}>Run Cloud Smoke</button>
+          </Card>
+          <Card title="Secrets + Backup">
+            <button onClick={async () => { const s = await getWave5SecretsStatus(); setWave5Secrets(s); setOutput(JSON.stringify(s, null, 2)) }}>Secrets Status</button>
+            <button onClick={async () => { const b = await runWave5Backup('wave5-ui'); setWave5Backups((await listWave5Backups()).backups || []); setOutput(JSON.stringify(b, null, 2)) }}>Run Backup</button>
+            <div>Backups: <b>{wave5Backups.length}</b></div>
+            <pre>{JSON.stringify(wave5Secrets || {}, null, 2)}</pre>
+          </Card>
+          <Card title="Alerting + Channel Smokes">
+            <select value={wave5AlertChannel} onChange={(e) => setWave5AlertChannel(e.target.value)}>
+              <option value="webhook">webhook</option>
+              <option value="pagerduty">pagerduty</option>
+              <option value="opsgenie">opsgenie</option>
+            </select>
+            <button onClick={async () => setOutput(JSON.stringify(await testWave5Alert({ channel: wave5AlertChannel }), null, 2))}>Test Alert</button>
+            <button onClick={async () => setOutput(JSON.stringify(await sendWave5Alert({ channel: wave5AlertChannel, payload: { summary: 'Wave5 manual alert', severity: 'critical' } }), null, 2))}>Send Alert</button>
+            <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: 'whatsapp', chat_id: '', text: 'Wave5 WhatsApp smoke' }), null, 2))}>WhatsApp Smoke</button>
+            <button onClick={async () => setOutput(JSON.stringify(await sendNativeChannelMessage({ channel: 'signal', chat_id: '', text: 'Wave5 Signal smoke' }), null, 2))}>Signal Smoke</button>
           </Card>
         </div>}
 

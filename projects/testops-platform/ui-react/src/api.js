@@ -152,3 +152,22 @@ export const evalWave41Policy = (payload) => api('/wave4.1/policy/evaluate', {
 })
 export const getWave41QueueReadiness = () => api('/wave4.1/queue/readiness')
 export const verifyWave41QueueStartup = () => api('/wave4.1/queue/startup-verify', { method: 'POST' })
+
+export const runWave5MobileCloud = (payload) => api('/wave5/mobile/cloud-run', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const getWave5SecretsStatus = () => api('/wave5/secrets/status')
+export const runWave5Backup = (label = 'wave5-ui') => api('/wave5/backup/run', {
+  method: 'POST',
+  body: JSON.stringify({ label }),
+})
+export const listWave5Backups = () => api('/wave5/backup/list')
+export const testWave5Alert = (payload) => api('/wave5/alerts/test', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+export const sendWave5Alert = (payload) => api('/wave5/alerts/send', {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
