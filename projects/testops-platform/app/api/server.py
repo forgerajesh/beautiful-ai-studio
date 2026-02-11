@@ -18,6 +18,7 @@ from app.api.workflows import list_workflows
 from app.api.artifacts_io import list_artifacts, read_artifact
 from app.core.doctor import run_doctor
 from app.testdata.manager import list_profiles, seed_profile, load_profile, generate_synthetic, reset_active, status as testdata_status
+from app.mobile.runner import list_devices as mobile_list_devices, run_mobile_checks, last_report as mobile_last_report
 from app.auth.rbac import get_role, require_role
 from app.state.logbus import logbus
 from app.channels.config.store import list_tenants, get_tenant, upsert_tenant
@@ -457,6 +458,28 @@ def testdata_reset(role: str = Depends(get_role)):
 def testdata_status_api(role: str = Depends(get_role)):
     require_role(role, ["admin", "operator", "viewer"])
     return testdata_status()
+
+
+@app.get('/mobile/devices')
+def mobile_devices(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return {"devices": mobile_list_devices()}
+
+
+@app.post('/mobile/run')
+def mobile_run(payload: dict, role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator"])
+    return run_mobile_checks(
+        url=str(payload.get('url', 'https://example.com')),
+        device=str(payload.get('device', 'iPhone 13')),
+        simulate=bool(payload.get('simulate', True)),
+    )
+
+
+@app.get('/mobile/last-report')
+def mobile_report(role: str = Depends(get_role)):
+    require_role(role, ["admin", "operator", "viewer"])
+    return mobile_last_report()
 
 
 @app.post('/artifacts/read')

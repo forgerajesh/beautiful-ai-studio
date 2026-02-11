@@ -3,7 +3,7 @@
   "status": "PASS",
   "profile": "retail_orders",
   "description": "Validate retail orders pipeline from source extract to target mart.",
-  "generated_at": "2026-02-10T20:53:58.784404+00:00",
+  "generated_at": "2026-02-11T02:06:44.303309+00:00",
   "summary": {
     "total_checks": 9,
     "pass": 9,
@@ -45,7 +45,7 @@
     {
       "name": "freshness_latency_target",
       "status": "PASS",
-      "detail": "latest=2026-02-08T11:30:00+00:00, latency_minutes=3443, max_allowed=5000000"
+      "detail": "latest=2026-02-08T11:30:00+00:00, latency_minutes=3756, max_allowed=5000000"
     },
     {
       "name": "business_rule_target_amount_non_negative",

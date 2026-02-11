@@ -3,19 +3,19 @@
   "users": [
     {
       "username": "user_0",
-      "role": "user"
+      "role": "admin"
     },
     {
       "username": "user_1",
-      "role": "admin"
+      "role": "manager"
     },
     {
       "username": "user_2",
-      "role": "admin"
+      "role": "user"
     },
     {
       "username": "user_3",
-      "role": "manager"
+      "role": "user"
     },
     {
       "username": "user_4",
@@ -25,23 +25,23 @@
   "orders": [
     {
       "id": 10000,
-      "status": "cancelled"
-    },
-    {
-      "id": 10001,
-      "status": "shipped"
-    },
-    {
-      "id": 10002,
       "status": "created"
     },
     {
+      "id": 10001,
+      "status": "paid"
+    },
+    {
+      "id": 10002,
+      "status": "shipped"
+    },
+    {
       "id": 10003,
-      "status": "cancelled"
+      "status": "paid"
     },
     {
       "id": 10004,
-      "status": "paid"
+      "status": "created"
     },
     {
       "id": 10005,

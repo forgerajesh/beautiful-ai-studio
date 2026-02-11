@@ -4,6 +4,8 @@ A feature-oriented testing product combining:
 - Functional testing (Playwright workflows)
 - Non-functional testing (SLA + light load checks)
 - Security testing (SECQ integration)
+- Mobile testing (device profiles + responsive/touch smoke)
+- ETL testing (profile-driven validation)
 - OpenClaw-style agent interaction layer across channels
 - Self-healing execution (including AI locator repair) and best-practice quality governance
 

@@ -1,0 +1,1 @@
+{"name": "wave4-contract", "version": "1.0", "provider": "local", "consumer": "test", "endpoints": [{"method": "POST", "path": "/api/login", "expected_status": 200}, {"method": "GET", "path": "/api/profile", "expected_status": 200}]}
