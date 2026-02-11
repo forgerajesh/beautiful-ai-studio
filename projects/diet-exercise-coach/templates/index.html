@@ -50,23 +50,35 @@
           </div>
           <div class='f'>
             <input name='password' type='password' placeholder='Password' required>
+            <select name='role'><option value='patient' selected>patient</option><option value='doctor'>doctor</option></select>
+          </div>
+          <div class='f'>
             <input name='age' type='number' placeholder='Age' value='30' required>
-          </div>
-          <div class='f'>
             <select name='gender'><option value='male'>male</option><option value='female'>female</option></select>
+          </div>
+          <div class='f'>
             <input name='height_cm' type='number' step='0.1' placeholder='Height (cm)' value='170' required>
-          </div>
-          <div class='f'>
             <input name='weight_kg' type='number' step='0.1' placeholder='Current Weight (kg)' value='102' required>
-            <input name='goal_weight_kg' type='number' step='0.1' placeholder='Goal Weight (kg)' value='85' required>
           </div>
           <div class='f'>
+            <input name='goal_weight_kg' type='number' step='0.1' placeholder='Goal Weight (kg)' value='85' required>
             <input name='target_weeks' type='number' min='4' max='52' value='16' placeholder='Target weeks'>
+          </div>
+          <div class='f'>
             <input name='workout_days' type='number' min='2' max='7' value='5' placeholder='Workout days/week'>
+            <input name='specialty' placeholder='Doctor specialty (if role=doctor)'>
           </div>
           <div class='f'>
             <select name='activity_level'><option>low</option><option selected>moderate</option><option>high</option></select>
             <select name='diet_pref'><option>balanced</option><option>veg</option><option>low_carb</option><option>high_protein</option></select>
+          </div>
+          <div class='f'>
+            <input name='experience_years' type='number' min='0' value='0' placeholder='Doctor experience years'>
+            <select name='consultation_mode'><option>online</option><option>clinic</option><option>hybrid</option></select>
+          </div>
+          <div class='f'>
+            <input name='fee' placeholder='Doctor consultation fee'>
+            <input name='bio' placeholder='Doctor bio (short)'>
           </div>
           <div class='f full'><button type='submit'>Create Profile</button></div>
         </form>
@@ -85,8 +97,8 @@
         <div class='users'>
           {% for u in users %}
           <a href='/dashboard/{{u.id}}'>
-            <b>{{u.name}}</b><br>
-            <span class='meta'>{{u.email}} · {{u.weight_kg}}kg → {{u.goal_weight_kg}}kg</span>
+            <b>{{u.name}}</b> <span class='meta'>({{u.role}})</span><br>
+            <span class='meta'>{{u.email}} {% if u.role == 'patient' %}· {{u.weight_kg}}kg → {{u.goal_weight_kg}}kg{% endif %}</span>
           </a>
           {% endfor %}
         </div>

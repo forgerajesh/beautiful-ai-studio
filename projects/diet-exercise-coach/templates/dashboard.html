@@ -29,10 +29,18 @@
   <div class='wrap'>
     <div class='top'>
       <div class='actions'><a href='/'>Home</a> · <a href='/logout'>Logout</a></div>
-      <h1>{{user.name}} — Performance Dashboard</h1>
-      <div class='muted'>Current: <b>{{user.weight_kg}}kg</b> · Goal: <b>{{user.goal_weight_kg}}kg</b> · Timeline: <b>{{user.target_weeks}} weeks</b> · Workout days: <b>{{user.workout_days}}</b>/week</div>
+      <h1>{{user.name}} — {{ 'Doctor Service Dashboard' if user.role == 'doctor' else 'Performance Dashboard' }}</h1>
+      <div class='muted'>
+        Role: <b>{{user.role}}</b>
+        {% if user.role == 'patient' %}
+          · Current: <b>{{user.weight_kg}}kg</b> · Goal: <b>{{user.goal_weight_kg}}kg</b> · Timeline: <b>{{user.target_weeks}} weeks</b> · Workout days: <b>{{user.workout_days}}</b>/week
+        {% else %}
+          · You can serve patients via doctor APIs.
+        {% endif %}
+      </div>
     </div>
 
+    {% if user.role == 'patient' %}
     <div class='row'>
       <div class='kpi'><div class='muted'>Entries (7d)</div><div class='v'>{{analytics.entries if analytics else 0}}</div></div>
       <div class='kpi'><div class='muted'>Avg steps (7d)</div><div class='v'>{{analytics.avg_steps if analytics and analytics.avg_steps else "—"}}</div></div>
@@ -41,7 +49,16 @@
       <div class='kpi'><div class='muted'>Habit streak</div><div class='v'>{{advanced.streak_days if advanced else 0}}d</div></div>
       <div class='kpi'><div class='muted'>Plateau status</div><div class='v'>{{"Yes" if advanced and advanced.plateau else "No"}}</div></div>
     </div>
+    {% else %}
+    <div class='card' style='margin-top:14px'>
+      <h3>Doctor APIs</h3>
+      <p><code>GET /api/doctors</code> — list doctors</p>
+      <p><code>POST /api/patient/{patient_user_id}/assign-doctor/{doctor_user_id}</code> — assign doctor to patient</p>
+      <p><code>GET /api/patient/{patient_user_id}/doctors</code> — patient doctor list</p>
+    </div>
+    {% endif %}
 
+    {% if user.role == 'patient' %}
     <div class='grid'>
       <div class='card'>
         <h3>Personalized Plan</h3>
@@ -121,6 +138,7 @@
         </tbody>
       </table>
     </div>
+    {% endif %}
   </div>
 </body>
 </html>

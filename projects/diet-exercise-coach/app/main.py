@@ -44,6 +44,7 @@ def init_db():
         """
         create table if not exists users (
             id integer primary key autoincrement,
+            role text default 'patient',
             name text not null,
             email text unique not null,
             password_hash text,
@@ -56,6 +57,25 @@ def init_db():
             activity_level text,
             workout_days integer default 5,
             diet_pref text,
+            created_at text not null
+        );
+
+        create table if not exists doctor_profiles (
+            id integer primary key autoincrement,
+            user_id integer not null,
+            specialty text,
+            experience_years integer,
+            bio text,
+            consultation_mode text default 'online',
+            fee text,
+            created_at text not null
+        );
+
+        create table if not exists care_links (
+            id integer primary key autoincrement,
+            patient_user_id integer not null,
+            doctor_user_id integer not null,
+            status text default 'active',
             created_at text not null
         );
 
@@ -108,6 +128,8 @@ def init_db():
 
     # lightweight migration safety
     existing_cols = {r["name"] for r in cur.execute("pragma table_info(users)").fetchall()}
+    if "role" not in existing_cols:
+        cur.execute("alter table users add column role text default 'patient'")
     if "password_hash" not in existing_cols:
         cur.execute("alter table users add column password_hash text")
     if "gender" not in existing_cols:
@@ -403,7 +425,7 @@ def startup():
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     c = conn()
-    users = c.execute("select id,name,email,weight_kg,goal_weight_kg from users order by id desc limit 20").fetchall()
+    users = c.execute("select id,role,name,email,weight_kg,goal_weight_kg from users order by id desc limit 20").fetchall()
     c.close()
     return templates.TemplateResponse(
         "index.html",
@@ -416,23 +438,30 @@ def register(
     name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
-    age: int = Form(...),
+    role: str = Form("patient"),
+    age: int = Form(30),
     gender: str = Form("male"),
-    height_cm: float = Form(...),
-    weight_kg: float = Form(...),
-    goal_weight_kg: float = Form(...),
+    height_cm: float = Form(170),
+    weight_kg: float = Form(70),
+    goal_weight_kg: float = Form(65),
     target_weeks: int = Form(16),
     activity_level: str = Form("moderate"),
     workout_days: int = Form(5),
     diet_pref: str = Form("balanced"),
+    specialty: str = Form(""),
+    experience_years: int = Form(0),
+    bio: str = Form(""),
+    consultation_mode: str = Form("online"),
+    fee: str = Form(""),
 ):
     c = conn()
     c.execute(
         """
-        insert into users (name,email,password_hash,age,gender,height_cm,weight_kg,goal_weight_kg,target_weeks,activity_level,workout_days,diet_pref,created_at)
-        values (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        insert into users (role,name,email,password_hash,age,gender,height_cm,weight_kg,goal_weight_kg,target_weeks,activity_level,workout_days,diet_pref,created_at)
+        values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
+            role,
             name,
             email.lower().strip(),
             hash_password(password),
@@ -450,6 +479,14 @@ def register(
     )
     c.commit()
     user_id = c.execute("select id from users where email=?", (email.lower().strip(),)).fetchone()[0]
+
+    if role == "doctor":
+        c.execute(
+            "insert into doctor_profiles (user_id,specialty,experience_years,bio,consultation_mode,fee,created_at) values (?,?,?,?,?,?,?)",
+            (user_id, specialty, experience_years, bio, consultation_mode, fee, now_utc().isoformat()),
+        )
+        c.commit()
+
     c.close()
 
     token = create_session(user_id)
@@ -568,10 +605,11 @@ def api_register(payload: dict):
     c = conn()
     c.execute(
         """
-        insert into users (name,email,password_hash,age,gender,height_cm,weight_kg,goal_weight_kg,target_weeks,activity_level,workout_days,diet_pref,created_at)
-        values (?,?,?,?,?,?,?,?,?,?,?,?,?)
+        insert into users (role,name,email,password_hash,age,gender,height_cm,weight_kg,goal_weight_kg,target_weeks,activity_level,workout_days,diet_pref,created_at)
+        values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
+            payload.get("role", "patient"),
             payload["name"],
             payload["email"].lower().strip(),
             hash_password(payload.get("password", "changeme123")),
@@ -589,6 +627,22 @@ def api_register(payload: dict):
     )
     c.commit()
     uid = c.execute("select id from users where email=?", (payload["email"].lower().strip(),)).fetchone()[0]
+
+    if payload.get("role", "patient") == "doctor":
+        c.execute(
+            "insert into doctor_profiles (user_id,specialty,experience_years,bio,consultation_mode,fee,created_at) values (?,?,?,?,?,?,?)",
+            (
+                uid,
+                payload.get("specialty", "General Nutrition"),
+                payload.get("experience_years", 0),
+                payload.get("bio", ""),
+                payload.get("consultation_mode", "online"),
+                payload.get("fee", ""),
+                now_utc().isoformat(),
+            ),
+        )
+        c.commit()
+
     c.close()
     return {"ok": True, "user_id": uid}
 
@@ -714,6 +768,66 @@ def api_weight_chart(user_id: int):
     c.close()
     points = [{"date": r["date"], "weight_kg": r["weight_kg"]} for r in rows]
     return {"ok": True, "series": points}
+
+
+@app.get("/api/doctors")
+def api_list_doctors():
+    c = conn()
+    rows = c.execute(
+        """
+        select u.id as doctor_user_id, u.name, u.email, d.specialty, d.experience_years, d.bio, d.consultation_mode, d.fee
+        from users u
+        left join doctor_profiles d on d.user_id = u.id
+        where u.role='doctor'
+        order by u.id desc
+        """
+    ).fetchall()
+    c.close()
+    return {"ok": True, "doctors": [dict(r) for r in rows]}
+
+
+@app.post("/api/patient/{patient_user_id}/assign-doctor/{doctor_user_id}")
+def api_assign_doctor(patient_user_id: int, doctor_user_id: int):
+    c = conn()
+    p = c.execute("select id, role from users where id=?", (patient_user_id,)).fetchone()
+    d = c.execute("select id, role from users where id=?", (doctor_user_id,)).fetchone()
+    if not p or p["role"] != "patient":
+        c.close()
+        raise HTTPException(status_code=400, detail="Invalid patient user")
+    if not d or d["role"] != "doctor":
+        c.close()
+        raise HTTPException(status_code=400, detail="Invalid doctor user")
+
+    existing = c.execute(
+        "select id from care_links where patient_user_id=? and doctor_user_id=? and status='active'",
+        (patient_user_id, doctor_user_id),
+    ).fetchone()
+    if not existing:
+        c.execute(
+            "insert into care_links (patient_user_id, doctor_user_id, status, created_at) values (?,?,?,?)",
+            (patient_user_id, doctor_user_id, "active", now_utc().isoformat()),
+        )
+        c.commit()
+    c.close()
+    return {"ok": True, "patient_user_id": patient_user_id, "doctor_user_id": doctor_user_id, "status": "active"}
+
+
+@app.get("/api/patient/{patient_user_id}/doctors")
+def api_patient_doctors(patient_user_id: int):
+    c = conn()
+    rows = c.execute(
+        """
+        select u.id as doctor_user_id, u.name, u.email, d.specialty, d.experience_years, d.consultation_mode, d.fee
+        from care_links cl
+        join users u on u.id = cl.doctor_user_id
+        left join doctor_profiles d on d.user_id = u.id
+        where cl.patient_user_id=? and cl.status='active'
+        order by cl.id desc
+        """,
+        (patient_user_id,),
+    ).fetchall()
+    c.close()
+    return {"ok": True, "doctors": [dict(r) for r in rows]}
 
 
 @app.post("/api/reminder/{user_id}")

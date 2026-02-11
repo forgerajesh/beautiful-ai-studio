@@ -1,7 +1,7 @@
 # Diet & Exercise Coach App
 
 A practical weight-loss coaching app where users can:
-- register + login securely
+- register + login securely as **patient** or **doctor**
 - provide body stats, timeline, and preference inputs
 - generate personalized diet/workout plans
 - log daily check-ins with motivational coach feedback
@@ -10,6 +10,7 @@ A practical weight-loss coaching app where users can:
 - generate daily motivational nudge text for Telegram/WhatsApp integration
 - food library + meal swap suggestions + weekly meal planner + shopping list
 - weight chart data API + photo check-ins + in-app reminder scheduler
+- doctor services: doctor profiles + patient-doctor assignment APIs
 
 ## Run
 ```bash
@@ -35,6 +36,9 @@ Open: `http://localhost:8077`
 - `GET /api/chart/weight/{user_id}`
 - `POST /api/reminder/{user_id}`
 - `GET /api/reminder/{user_id}`
+- `GET /api/doctors`
+- `POST /api/patient/{patient_user_id}/assign-doctor/{doctor_user_id}`
+- `GET /api/patient/{patient_user_id}/doctors`
 
 ## Product upgrades included
 - Session-based auth for web app (`/login`, `/logout`)
