@@ -269,6 +269,37 @@ Wave4 artifacts:
 - `reports/wave4-fuzz-reports.json`
 - `reports/wave4-soak-reports.json`
 
+## Wave4.1 hardening pack
+- OIDC/JWT hardening (with HS256 fallback preserved):
+  - `GET /wave4.1/auth/status`
+  - `GET /wave4.1/auth/verify`
+- OPA-compatible policy adapter (falls back to local policy when OPA is unavailable):
+  - `POST /wave4.1/policy/evaluate`
+- Worker/queue readiness hardening:
+  - `GET /wave4.1/queue/readiness`
+  - `POST /wave4.1/queue/startup-verify`
+- Channel expansion:
+  - Native Microsoft Teams adapter (`app/channels/teams.py`)
+  - `POST /channels/send` now supports `teams`
+- React UI:
+  - New **Wave4.1** panel showing auth mode status, policy evaluate action, queue readiness/startup verify, and channel smoke send.
+
+### Wave4.1 auth/policy environment
+- `JWT_AUTH_MODE=auto|hs256|oidc`
+- `JWT_AUTH_ALLOW_FALLBACK=true|false`
+- `OIDC_ISSUER_URL`, `OIDC_JWKS_URL`, `OIDC_AUDIENCE`, `OIDC_ALGORITHMS`
+- `OPA_POLICY_URL`, `OPA_TIMEOUT_SECONDS`
+
+### Wave4.1 worker deployment compose
+- `deploy/docker-compose.wave41.yml` (profiles: `api`, `worker`, `queue`, `prod`, `ops`)
+
+Run examples:
+```bash
+docker compose -f deploy/docker-compose.wave41.yml --profile prod up -d
+curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/auth/status
+curl -H 'X-API-Key: viewer-token' http://localhost:8090/wave4.1/queue/readiness
+```
+
 ## CI/CD wiring (Wave4)
 - `.github/workflows/quality-gates.yml` → install + pytest gate
 - `.github/workflows/promotion-sim.yml` → quality gate + promotion simulation + rollback hook on failure
