@@ -23,12 +23,17 @@ class SQLiteAdapter(DBAdapter):
         cur = self.conn.cursor()
         cur.execute(f"PRAGMA table_info({table})")
         rows = cur.fetchall()
-        return [
-            {
-                "name": r[1],
-                "type": r[2],
-                "nullable": r[3] == 0,
-                "pk": r[5] == 1,
-            }
-            for r in rows
-        ]
+        out = []
+        for r in rows:
+            pk = r[5] == 1
+            # SQLite quirk: PRIMARY KEY columns may report notnull=0 unless explicitly declared NOT NULL.
+            nullable = (r[3] == 0) and not pk
+            out.append(
+                {
+                    "name": r[1],
+                    "type": r[2],
+                    "nullable": nullable,
+                    "pk": pk,
+                }
+            )
+        return out

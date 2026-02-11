@@ -13,7 +13,18 @@ def env(name: str, required: bool = True, default: str = "") -> str:
     return v
 
 
+def _has_email_config() -> tuple[bool, list[str]]:
+    required = ["SMTP_USER", "SMTP_PASS", "REPORT_TO"]
+    missing = [k for k in required if not os.getenv(k)]
+    return (len(missing) == 0, missing)
+
+
 def main():
+    ok, missing = _has_email_config()
+    if not ok:
+        print(f"INFO: email config missing ({', '.join(missing)}); skipping email send")
+        return
+
     smtp_host = env("SMTP_HOST", default="smtp.gmail.com")
     smtp_port = int(env("SMTP_PORT", default="587"))
     smtp_user = env("SMTP_USER")
