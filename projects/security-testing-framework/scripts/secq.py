@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import argparse
+import sys
 from pathlib import Path
+
+# Allow running as `python scripts/secq.py` from repo root.
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from framework.config_loader import load_config
 from framework.engine import run_all
