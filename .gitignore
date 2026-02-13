@@ -1,0 +1,13 @@
+# Global workspace ignores for generated artifacts
+**/node_modules/
+**/dist/
+**/.vite/
+**/__pycache__/
+**/.pytest_cache/
+
+# Local runtime/demo artifacts
+projects/etl-testing-framework/demo_etl.db
+projects/diet-exercise-coach/reports/
+
+# Binary export artifacts
+projects/*.pdf
