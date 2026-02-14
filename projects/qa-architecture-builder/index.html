@@ -39,6 +39,12 @@
     <section class="canvas-wrap">
       <div class="toolbar">
         <span>Tip: Drag blocks, click two blocks to connect, double-click block to edit text</span>
+        <div>
+          <button id="undoBtn">Undo</button>
+          <button id="redoBtn">Redo</button>
+          <button id="autoLayoutBtn">Auto Layout</button>
+          <button id="validateBtn">Validate</button>
+        </div>
       </div>
       <div id="canvas" class="canvas"></div>
     </section>
@@ -54,6 +60,12 @@
       <h3>Auto Test Strategy</h3>
       <button id="generateStrategy">Generate Strategy from Board</button>
       <pre id="strategyOutput">Click generate to build a strategy narrative.</pre>
+
+      <h3>Effort Estimator</h3>
+      <pre id="effortOutput">Estimated effort will appear here.</pre>
+
+      <h3>Validation</h3>
+      <pre id="validationOutput">Run validation to check architecture quality.</pre>
     </aside>
   </main>
 
