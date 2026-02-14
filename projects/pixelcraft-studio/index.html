@@ -12,8 +12,12 @@
   <header class="topbar">
     <div class="brand">🎨 PixelCraft Studio</div>
     <div class="actions">
-      <input id="userName" placeholder="Your name" />
+      <input id="authName" placeholder="Name" />
+      <input id="authEmail" placeholder="Email" />
+      <input id="authPassword" placeholder="Password" type="password" />
+      <button id="registerBtn">Register</button>
       <button id="loginBtn">Login</button>
+      <button id="logoutBtn">Logout</button>
       <button id="newDesign">New</button>
       <button id="saveProject">Save Project</button>
       <button id="exportPng" class="primary">Export PNG</button>
@@ -83,6 +87,20 @@
       <label>Secondary <input id="brandSecondary" type="color" value="#06b6d4" /></label>
       <label>Accent <input id="brandAccent" type="color" value="#f59e0b" /></label>
       <button id="applyBrand">Apply Brand Palette</button>
+
+      <h3>Collaboration</h3>
+      <input id="shareEmail" placeholder="Collaborator email" />
+      <select id="shareRole">
+        <option value="viewer">viewer</option>
+        <option value="editor">editor</option>
+      </select>
+      <button id="shareProject">Share Current Project</button>
+      <input id="commentText" placeholder="Add comment" />
+      <button id="addComment">Post Comment</button>
+      <div id="commentList" class="project-list"></div>
+
+      <h3>Version History</h3>
+      <div id="versionList" class="project-list"></div>
 
       <h3>Shared Templates</h3>
       <input id="sharedTemplateName" placeholder="Template name" />
