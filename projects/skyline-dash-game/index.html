@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skyline Dash</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="hud">
+    <div><strong>Skyline Dash</strong></div>
+    <div>Score: <span id="score">0</span></div>
+    <div>Best: <span id="best">0</span></div>
+  </div>
+
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <div class="overlay" id="overlay">
+    <h1>Skyline Dash</h1>
+    <p>Dodge obstacles. Collect energy orbs.</p>
+    <p><kbd>Space</kbd> / <kbd>↑</kbd> to jump · <kbd>P</kbd> pause</p>
+    <button id="startBtn">Start Game</button>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
