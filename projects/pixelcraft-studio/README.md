@@ -9,6 +9,8 @@ Original Canva-like design editor (not a copy), built with Fabric.js.
 - Property panel (fill, stroke, opacity, font)
 - Save/Load JSON design files
 - Export PNG
+- **Team mode (local):** user login, project list, autosave
+- **Shared templates board** + custom brand kit palette
 
 ## Run
 ```bash

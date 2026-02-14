@@ -12,16 +12,23 @@
   <header class="topbar">
     <div class="brand">🎨 PixelCraft Studio</div>
     <div class="actions">
+      <input id="userName" placeholder="Your name" />
+      <button id="loginBtn">Login</button>
       <button id="newDesign">New</button>
+      <button id="saveProject">Save Project</button>
+      <button id="exportPng" class="primary">Export PNG</button>
       <button id="saveJson">Save JSON</button>
       <button id="loadJson">Load JSON</button>
-      <button id="exportPng" class="primary">Export PNG</button>
       <input id="jsonFile" type="file" accept="application/json" hidden />
     </div>
   </header>
 
   <main>
     <aside class="panel left">
+      <h3>Projects</h3>
+      <input id="projectName" placeholder="Project name" />
+      <div id="projectList" class="project-list"></div>
+
       <h3>Templates</h3>
       <button data-template="instagram">Instagram Post</button>
       <button data-template="presentation">Presentation Slide</button>
@@ -47,6 +54,7 @@
       <div class="stage-toolbar">
         <label>Zoom <input id="zoom" type="range" min="30" max="180" value="100" /></label>
         <span id="stageSize">1080 x 1080</span>
+        <span id="autosaveStatus">Autosave: ready</span>
       </div>
       <div class="stage" id="stage">
         <canvas id="canvas" width="1080" height="1080"></canvas>
@@ -69,6 +77,17 @@
         </select>
       </label>
       <button id="applyProps">Apply to Selected</button>
+
+      <h3>Brand Kit</h3>
+      <label>Primary <input id="brandPrimary" type="color" value="#4f46e5" /></label>
+      <label>Secondary <input id="brandSecondary" type="color" value="#06b6d4" /></label>
+      <label>Accent <input id="brandAccent" type="color" value="#f59e0b" /></label>
+      <button id="applyBrand">Apply Brand Palette</button>
+
+      <h3>Shared Templates</h3>
+      <input id="sharedTemplateName" placeholder="Template name" />
+      <button id="saveSharedTemplate">Save Current as Shared</button>
+      <div id="sharedTemplateList" class="project-list"></div>
 
       <h3>Quick Brand Palette</h3>
       <div class="palette" id="palette"></div>
