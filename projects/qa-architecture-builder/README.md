@@ -15,6 +15,9 @@ Drag-and-drop app for quality assurance architects to design test architecture w
 - Risk scoring + validation checks
 - Effort estimator (person-day view)
 - Auto-generated test strategy narrative
+- Innovation Lab what-if simulator (team, release pace, leakage)
+- Anti-pattern detection engine
+- Export full blueprint pack (board + strategy + effort + validation + simulation)
 - Export/import board JSON
 - Built-in quality matrix coverage view
 

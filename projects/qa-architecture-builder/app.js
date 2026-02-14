@@ -6,6 +6,8 @@ const riskLabelEl = document.getElementById('riskLabel');
 const strategyOutput = document.getElementById('strategyOutput');
 const effortOutput = document.getElementById('effortOutput');
 const validationOutput = document.getElementById('validationOutput');
+const simulationOutput = document.getElementById('simulationOutput');
+const blueprintSummary = document.getElementById('blueprintSummary');
 
 let state = { nodes: [], links: [] };
 let selectedForLink = null;
@@ -185,6 +187,18 @@ function validateArchitecture() {
     : 'Validation Result: PASS\n- Architecture includes key QA controls and connectivity.';
 }
 
+function detectAntiPatterns() {
+  const types = state.nodes.map((n) => n.type);
+  const has = (x) => types.includes(x);
+  const anti = [];
+  if (has('Automation Framework') && !has('Test Strategy')) anti.push('Automation-first without strategy baseline');
+  if (has('CI/CD') && !has('Release Gate')) anti.push('CI/CD present but no formal release gate');
+  if (has('Test Cases') && !has('Test Data')) anti.push('Test cases without explicit test data management');
+  if (!has('Security') || !has('Performance') || !has('Accessibility')) anti.push('Missing non-functional testing triad (Security/Performance/Accessibility)');
+  if (state.links.length < Math.max(1, state.nodes.length - 2)) anti.push('Low architecture connectivity can create silos');
+  return anti;
+}
+
 function generateStrategyText() {
   const types = state.nodes.map((n) => n.type);
   const has = (x) => types.includes(x);
@@ -200,6 +214,7 @@ function generateStrategyText() {
   if (has('CI/CD')) areas.push('CI/CD quality gate orchestration');
   if (has('Release Gate')) areas.push('formal go/no-go release checkpoint');
   const missing = ['Security', 'Performance', 'Accessibility', 'Release Gate'].filter((k) => !has(k));
+  const anti = detectAntiPatterns();
 
   return [
     `QA Architecture Strategy (${state.nodes.length} blocks, ${state.links.length} connections)`,
@@ -215,7 +230,10 @@ function generateStrategyText() {
     '3) Risk focus:',
     missing.length ? `- Missing controls to prioritize: ${missing.join(', ')}` : '- Critical controls are represented in the architecture board.',
     '',
-    '4) Recommended next step:',
+    '4) Anti-pattern scan:',
+    anti.length ? `- ${anti.join('\n- ')}` : '- No major anti-patterns detected in current architecture graph.',
+    '',
+    '5) Recommended next step:',
     '- Convert this architecture into milestone-based implementation plan with owners and SLAs.',
   ].join('\n');
 }
@@ -464,6 +482,53 @@ document.getElementById('validateBtn').onclick = () => {
   validateArchitecture();
 };
 
+document.getElementById('runSimulation').onclick = () => {
+  const team = Number(document.getElementById('simTeam').value);
+  const release = Number(document.getElementById('simRelease').value);
+  const leakage = Number(document.getElementById('simLeakage').value);
+  const componentCoverage = new Set(state.nodes.map((n) => n.type)).size;
+  const connectivityFactor = Math.min(1, state.links.length / Math.max(1, state.nodes.length));
+
+  const predictedCycle = Math.max(3, (42 - team * 0.9 - componentCoverage * 0.6 + release * 0.7));
+  const predictedEscapes = Math.max(1, Math.round(leakage * (1.2 - connectivityFactor) + (12 - componentCoverage * 0.4)));
+  const qualityIndex = Math.max(0, Math.min(100, Math.round(100 - predictedEscapes * 2 - predictedCycle * 0.8 + componentCoverage * 1.2)));
+
+  simulationOutput.textContent = [
+    'Simulation Result',
+    `- Team Capacity: ${team}`,
+    `- Release Frequency: ${release}/month`,
+    `- Defect Leakage Input: ${leakage}%`,
+    '',
+    `Predicted Test Cycle Time: ${predictedCycle.toFixed(1)} days`,
+    `Predicted Escaped Defects / release: ${predictedEscapes}`,
+    `Projected Quality Index: ${qualityIndex}/100`,
+    '',
+    qualityIndex >= 80 ? 'Recommendation: Architecture is scale-ready.' : 'Recommendation: Strengthen controls (security/performance/release gates) and improve flow connectivity.'
+  ].join('\n');
+};
+
+document.getElementById('exportBlueprintPack').onclick = () => {
+  const blueprint = {
+    metadata: {
+      exportedAt: new Date().toISOString(),
+      app: 'QA Architecture Builder',
+      version: '2.0-innovation-pack'
+    },
+    board: state,
+    strategy: generateStrategyText(),
+    effort: effortOutput.textContent,
+    validation: validationOutput.textContent,
+    simulation: simulationOutput.textContent,
+    antiPatterns: detectAntiPatterns(),
+  };
+  const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'qa-architecture-blueprint-pack.json';
+  a.click();
+  blueprintSummary.textContent = `Blueprint exported with ${state.nodes.length} nodes, ${state.links.length} links, anti-patterns: ${detectAntiPatterns().length}.`;
+};
+
 // seed board from first reference template
 state = templateToState(referenceTemplates[0]);
 
@@ -471,3 +536,5 @@ render();
 strategyOutput.textContent = generateStrategyText();
 renderEffort();
 validateArchitecture();
+simulationOutput.textContent = 'Run simulation to see projected QA health.';
+blueprintSummary.textContent = 'Export full blueprint pack for governance, planning, and audit review.';

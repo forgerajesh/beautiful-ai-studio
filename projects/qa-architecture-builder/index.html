@@ -73,6 +73,17 @@
 
       <h3>Validation</h3>
       <pre id="validationOutput">Run validation to check architecture quality.</pre>
+
+      <h3>Innovation Lab (What-if Simulator)</h3>
+      <label>Team Capacity <input id="simTeam" type="range" min="2" max="30" value="10" /></label>
+      <label>Release Frequency / month <input id="simRelease" type="range" min="1" max="20" value="6" /></label>
+      <label>Defect Leakage % <input id="simLeakage" type="range" min="1" max="30" value="8" /></label>
+      <button id="runSimulation">Run Simulation</button>
+      <pre id="simulationOutput">Run simulation to see projected QA health.</pre>
+
+      <h3>Blueprint Pack</h3>
+      <button id="exportBlueprintPack">Export Full Blueprint Pack</button>
+      <pre id="blueprintSummary">Blueprint summary will appear here.</pre>
     </aside>
   </main>
 
