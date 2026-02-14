@@ -181,6 +181,25 @@ async function useTemplate(id){
   if(d.template){ importDesignJson(d.template.design); queueAutosave(); }
 }
 
+
+
+async function applyAIDesign(design, noteText) {
+  if (!design) return;
+  canvas.clear();
+  setSize(1080, 1080);
+  canvas.setBackgroundColor(design.background || '#ffffff', canvas.renderAll.bind(canvas));
+  (design.objects || []).forEach((o) => {
+    let obj;
+    if (o.type === 'rect') obj = new fabric.Rect({ left:o.left||100, top:o.top||100, width:o.width||300, height:o.height||120, fill:o.fill||'#111827', opacity:o.opacity ?? 1, rx:10, ry:10 });
+    if (o.type === 'circle') obj = new fabric.Circle({ left:o.left||100, top:o.top||100, radius:o.radius||80, fill:o.fill||'#4f46e5', opacity:o.opacity ?? 1 });
+    if (o.type === 'text') obj = new fabric.Textbox(o.text || 'AI Text', { left:o.left||120, top:o.top||120, width:o.width||700, fill:o.fill||'#111827', fontSize:o.fontSize||48, fontWeight:o.fontWeight||'700', fontFamily:'Inter', opacity:o.opacity ?? 1 });
+    if (obj) canvas.add(obj);
+  });
+  canvas.requestRenderAll();
+  autosaveStatus.textContent = noteText;
+  queueAutosave();
+}
+
 function queueAutosave(){
   if(!token) return;
   autosaveStatus.textContent = 'Autosave: pending...';
@@ -230,20 +249,48 @@ document.getElementById('aiGenerate').onclick = async () => {
   const r = await authFetch(`${API}/ai/design`, { method: 'POST', body: JSON.stringify({ prompt, tone }) });
   const d = await r.json();
   if (!d.design) return alert(d.error || 'AI generation failed');
+  await applyAIDesign(d.design, d.fallback ? 'AI fallback applied (set LLM key on server)' : 'AI layout generated');
+};
 
-  canvas.clear();
-  setSize(1080, 1080);
-  canvas.setBackgroundColor(d.design.background || '#ffffff', canvas.renderAll.bind(canvas));
-  (d.design.objects || []).forEach((o) => {
-    let obj;
-    if (o.type === 'rect') obj = new fabric.Rect({ left:o.left||100, top:o.top||100, width:o.width||300, height:o.height||120, fill:o.fill||'#111827', opacity:o.opacity ?? 1, rx:10, ry:10 });
-    if (o.type === 'circle') obj = new fabric.Circle({ left:o.left||100, top:o.top||100, radius:o.radius||80, fill:o.fill||'#4f46e5', opacity:o.opacity ?? 1 });
-    if (o.type === 'text') obj = new fabric.Textbox(o.text || 'AI Text', { left:o.left||120, top:o.top||120, width:o.width||700, fill:o.fill||'#111827', fontSize:o.fontSize||48, fontWeight:o.fontWeight||'700', fontFamily:'Inter', opacity:o.opacity ?? 1 });
-    if (obj) canvas.add(obj);
-  });
-  canvas.requestRenderAll();
-  autosaveStatus.textContent = d.fallback ? 'AI fallback applied (set LLM key on server)' : 'AI layout generated';
+document.getElementById('aiCopy').onclick = async () => {
+  if (!token) return alert('Login first to use AI Copywriter');
+  const prompt = document.getElementById('aiPrompt').value.trim();
+  const tone = document.getElementById('aiTone').value;
+  if (!prompt) return alert('Enter AI prompt');
+  const r = await authFetch(`${API}/ai/copy`, { method: 'POST', body: JSON.stringify({ prompt, tone }) });
+  const d = await r.json();
+  if (!d.copy) return alert(d.error || 'AI copy failed');
+  const t = new fabric.Textbox(d.copy.headline || 'AI Headline', { left: 120, top: 120, width: 820, fontSize: 68, fontWeight: '800', fill: '#111827' });
+  const b = new fabric.Textbox(d.copy.body || '', { left: 120, top: 240, width: 760, fontSize: 34, fontWeight: '500', fill: '#334155' });
+  canvas.add(t); canvas.add(b); canvas.setActiveObject(t); canvas.requestRenderAll();
+  autosaveStatus.textContent = d.fallback ? 'AI copy fallback applied' : 'AI copy generated';
   queueAutosave();
+};
+
+document.getElementById('aiPalette').onclick = async () => {
+  if (!token) return alert('Login first to use AI Palette');
+  const prompt = document.getElementById('aiPrompt').value.trim();
+  const tone = document.getElementById('aiTone').value;
+  const r = await authFetch(`${API}/ai/palette`, { method: 'POST', body: JSON.stringify({ prompt, tone }) });
+  const d = await r.json();
+  const colors = d.colors || [];
+  if (!colors.length) return alert('No palette generated');
+  const ids = ['brandPrimary','brandSecondary','brandAccent'];
+  ids.forEach((id, i) => { if (colors[i]) document.getElementById(id).value = colors[i]; });
+  document.getElementById('applyBrand').click();
+  autosaveStatus.textContent = d.fallback ? 'AI palette fallback applied' : 'AI palette generated';
+};
+
+document.getElementById('aiVariants').onclick = async () => {
+  if (!token) return alert('Login first to create variants');
+  const prompt = document.getElementById('aiPrompt').value.trim();
+  const tone = document.getElementById('aiTone').value;
+  if (!prompt) return alert('Enter AI prompt');
+  const r = await authFetch(`${API}/ai/variants`, { method: 'POST', body: JSON.stringify({ prompt, tone }) });
+  const d = await r.json();
+  const vars = d.variants || [];
+  if (!vars.length) return alert('No variants generated');
+  await applyAIDesign(vars[0], d.fallback ? 'Variant fallback applied (first of 3)' : 'AI variants generated (applied variant 1/3)');
 };
 
 projectListEl.onclick=(e)=>{const id=e.target.getAttribute('data-open'); if(id) openProject(id);};

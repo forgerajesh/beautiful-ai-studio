@@ -273,4 +273,59 @@ app.post('/api/ai/design', auth, async (req, res) => {
   }
 });
 
+
+
+async function llmJson(systemPrompt, userPrompt, fallbackObj) {
+  if (!LLM_API_KEY) return { data: fallbackObj, fallback: true, warning: 'LLM_API_KEY missing' };
+  try {
+    const r = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM_API_KEY}` },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        temperature: 0.6,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ]
+      })
+    });
+    const data = await r.json();
+    const txt = (data?.choices?.[0]?.message?.content || '').replace(/```json|```/g, '').trim();
+    return { data: JSON.parse(txt), fallback: false };
+  } catch (e) {
+    return { data: fallbackObj, fallback: true, warning: String(e) };
+  }
+}
+
+app.post('/api/ai/copy', auth, async (req, res) => {
+  const { prompt, tone = 'brand-forward' } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
+  const fallback = { copy: { headline: prompt.slice(0, 48), body: `A premium ${tone} visual concept designed for engagement and conversion.` } };
+  const schema = 'Return only JSON: {"copy":{"headline":"...","body":"..."}}';
+  const out = await llmJson(`You are a marketing copywriter. ${schema}`, `Write concise design copy for: ${prompt}. Tone: ${tone}`, fallback);
+  res.json({ ...out.data, fallback: out.fallback, warning: out.warning });
+});
+
+app.post('/api/ai/palette', auth, async (req, res) => {
+  const { prompt = '', tone = 'brand-forward' } = req.body || {};
+  const fallback = { colors: ['#4f46e5', '#06b6d4', '#f59e0b', '#111827', '#f8fafc'] };
+  const schema = 'Return only JSON: {"colors":["#hex1","#hex2","#hex3","#hex4","#hex5"]}';
+  const out = await llmJson(`You generate brand-safe color palettes. ${schema}`, `Generate a palette for: ${prompt}. Tone: ${tone}`, fallback);
+  res.json({ ...out.data, fallback: out.fallback, warning: out.warning });
+});
+
+app.post('/api/ai/variants', auth, async (req, res) => {
+  const { prompt, tone = 'brand-forward' } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
+  const fallback = { variants: [
+    { background:'#f8fafc', objects:[{type:'rect',left:80,top:100,width:920,height:360,fill:'#111827'},{type:'text',text:prompt,left:120,top:180,width:840,fontSize:68,fontWeight:'800',fill:'#fff'}] },
+    { background:'#0f172a', objects:[{type:'rect',left:60,top:120,width:960,height:820,fill:'#1e293b'},{type:'text',text:prompt,left:110,top:220,width:860,fontSize:64,fontWeight:'800',fill:'#e2e8f0'}] },
+    { background:'#ffffff', objects:[{type:'circle',left:760,top:120,radius:180,fill:'#4f46e5'},{type:'text',text:prompt,left:100,top:210,width:700,fontSize:58,fontWeight:'800',fill:'#111827'}] }
+  ]};
+  const schema = 'Return only JSON: {"variants":[{"background":"#hex","objects":[{"type":"text|rect|circle","text":"...","left":number,"top":number,"width":number,"height":number,"radius":number,"fill":"#hex","fontSize":number,"fontWeight":"400|600|700|800","opacity":number}]}]}';
+  const out = await llmJson(`You are an expert design art director. Create 3 distinct layout variants. ${schema}`, `Create 3 design variants for: ${prompt}. Tone: ${tone}`, fallback);
+  res.json({ ...out.data, fallback: out.fallback, warning: out.warning });
+});
+
 app.listen(PORT, () => console.log(`PixelCraft API running on :${PORT}`));
