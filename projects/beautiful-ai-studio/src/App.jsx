@@ -8,11 +8,37 @@ const THEMES = {
   Emerald: { bg: '#071b1a', card: '#0b2a28', text: '#ecfffb', accent: '#14b8a6' },
 };
 const LAYOUTS = ['Title', 'Two Column', 'Metrics', 'Timeline'];
-const TEMPLATES = [
-  { name: 'Startup Pitch', prompt: 'Create a startup pitch deck for AI-powered testing platform', badge: 'Popular' },
-  { name: 'Quarterly Business Review', prompt: 'Generate QBR deck for engineering quality transformation program', badge: 'Executive' },
-  { name: 'Solution Proposal', prompt: 'Build a client solution proposal for enterprise automation modernization', badge: 'Consulting' },
-];
+const TEMPLATE_CATEGORIES = {
+  Startup: ['Pitch Deck', 'Fundraising Story', 'Product Vision', 'GTM Plan', 'Launch Plan'],
+  Enterprise: ['QBR', 'Transformation Plan', 'Executive Update', 'Strategy Review', 'Operating Model'],
+  Marketing: ['Campaign Plan', 'Brand Story', 'Content Strategy', 'Social Plan', 'SEO Plan'],
+  Sales: ['Client Proposal', 'Solution Demo', 'Account Plan', 'Value Story', 'Renewal Plan'],
+  Education: ['Course Outline', 'Workshop Deck', 'Training Program', 'Bootcamp Intro', 'Certification Prep'],
+  Product: ['Roadmap', 'Feature Proposal', 'Discovery Insights', 'User Journey', 'Experiment Plan'],
+  Technology: ['Architecture Review', 'Migration Plan', 'Security Strategy', 'DevOps Plan', 'AI Adoption Plan'],
+  Consulting: ['Assessment Report', 'Diagnostic Summary', 'Engagement Plan', 'Transformation Blueprint', 'Maturity Model'],
+  HR: ['Hiring Plan', 'Onboarding Program', 'Culture Deck', 'Performance Framework', 'Org Design'],
+  Finance: ['Budget Review', 'Investment Brief', 'Board Pack', 'Revenue Plan', 'Cost Optimization'],
+};
+
+const TEMPLATES = (() => {
+  const out = [];
+  let i = 1;
+  Object.entries(TEMPLATE_CATEGORIES).forEach(([cat, patterns]) => {
+    for (let n = 1; n <= 25; n += 1) {
+      patterns.forEach((p) => {
+        out.push({
+          id: i++,
+          name: `${cat} ${p} ${n}`,
+          category: cat,
+          prompt: `Create a ${cat.toLowerCase()} ${p.toLowerCase()} presentation with executive storytelling, clear visuals, and action-oriented slides.`,
+          badge: cat,
+        });
+      });
+    }
+  });
+  return out; // 10 categories x 5 patterns x 25 variants = 1250 templates
+})();
 const seedSlides = [
   { id: crypto.randomUUID(), layout: 'Title', title: 'Your Presentation Title', bullets: ['AI-powered slide generation', 'Smart layouts', 'Brand themes'], notes: '' },
   { id: crypto.randomUUID(), layout: 'Two Column', title: 'Problem vs Solution', left: ['Manual deck creation is slow', 'Inconsistent design quality'], right: ['Use AI prompt to draft structure', 'Auto-fit content into layouts'], notes: '' },
@@ -39,6 +65,8 @@ export default function App() {
   const [deckTitle, setDeckTitle] = useState('My Deck');
   const [deckId, setDeckId] = useState(null);
   const [decks, setDecks] = useState([]);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('All');
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
@@ -141,6 +169,15 @@ export default function App() {
     await pptx.writeFile({ fileName: 'beautiful-ai-studio-deck.pptx' });
   };
 
+  const filteredTemplates = useMemo(() => {
+    const q = templateSearch.trim().toLowerCase();
+    return TEMPLATES.filter((t) => {
+      const catOk = templateCategory === 'All' || t.category === templateCategory;
+      const qOk = !q || t.name.toLowerCase().includes(q) || t.prompt.toLowerCase().includes(q);
+      return catOk && qOk;
+    });
+  }, [templateSearch, templateCategory]);
+
   const progress = useMemo(() => Math.min(100, Math.round((slides.length / 10) * 100)), [slides.length]);
 
   return (
@@ -171,8 +208,14 @@ export default function App() {
           </div>
           <div className="row"><button onClick={() => addSlide()}>+ Slide</button><button onClick={duplicateSlide}>Duplicate</button><button onClick={removeSlide}>Delete</button></div>
           <div className="row" style={{ marginTop: 8 }}><button onClick={saveDeck}>Save</button><button onClick={publishDeck}>Publish</button><button onClick={exportPpt}>PPT</button></div>
-          <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace</div>
-          <div className="stack">{TEMPLATES.map((t) => <button key={t.name} className="thumb" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span>{t.name}</span><small>{t.badge}</small></button>)}</div>
+          <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace ({TEMPLATES.length})</div>
+          <input placeholder="Search templates..." value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <select value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} style={{ width: '100%', marginBottom: 10, padding: 10 }}>
+            <option value="All">All Categories</option>
+            {Object.keys(TEMPLATE_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <div className="stack">{filteredTemplates.slice(0, 60).map((t) => <button key={t.id} className="thumb" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span>{t.name}</span><small>{t.badge}</small></button>)}</div>
+          <small style={{ opacity: .8, display: 'block', marginTop: 6 }}>{filteredTemplates.length} matching templates · showing first 60</small>
           <div className="panel-title" style={{ marginTop: 16 }}>My Decks</div>
           <div className="stack">{decks.map((d) => <button key={d.id} className="thumb" onClick={() => openDeck(d.id)}><span>{d.title}</span><small>{d.is_published ? `Published: ${d.slug}` : 'Draft'}</small></button>)}</div>
         </aside>
