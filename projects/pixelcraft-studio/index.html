@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixelCraft Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🎨 PixelCraft Studio</div>
+    <div class="actions">
+      <button id="newDesign">New</button>
+      <button id="saveJson">Save JSON</button>
+      <button id="loadJson">Load JSON</button>
+      <button id="exportPng" class="primary">Export PNG</button>
+      <input id="jsonFile" type="file" accept="application/json" hidden />
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel left">
+      <h3>Templates</h3>
+      <button data-template="instagram">Instagram Post</button>
+      <button data-template="presentation">Presentation Slide</button>
+      <button data-template="poster">Poster</button>
+
+      <h3>Elements</h3>
+      <button id="addText">Add Text</button>
+      <button id="addHeading">Add Heading</button>
+      <button id="addRect">Add Rectangle</button>
+      <button id="addCircle">Add Circle</button>
+      <button id="addLine">Add Line</button>
+      <button id="uploadImage">Upload Image</button>
+      <input id="imageFile" type="file" accept="image/*" hidden />
+
+      <h3>Layer</h3>
+      <button id="bringFront">Bring Front</button>
+      <button id="sendBack">Send Back</button>
+      <button id="duplicate">Duplicate</button>
+      <button id="delete">Delete</button>
+    </aside>
+
+    <section class="stage-wrap">
+      <div class="stage-toolbar">
+        <label>Zoom <input id="zoom" type="range" min="30" max="180" value="100" /></label>
+        <span id="stageSize">1080 x 1080</span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="canvas" width="1080" height="1080"></canvas>
+      </div>
+    </section>
+
+    <aside class="panel right">
+      <h3>Properties</h3>
+      <label>Fill <input id="fill" type="color" value="#1f2937" /></label>
+      <label>Stroke <input id="stroke" type="color" value="#000000" /></label>
+      <label>Stroke Width <input id="strokeWidth" type="range" min="0" max="20" value="0" /></label>
+      <label>Opacity <input id="opacity" type="range" min="10" max="100" value="100" /></label>
+      <label>Font Size <input id="fontSize" type="range" min="10" max="120" value="36" /></label>
+      <label>Font Weight
+        <select id="fontWeight">
+          <option value="400">Regular</option>
+          <option value="600">Semi-Bold</option>
+          <option value="700">Bold</option>
+          <option value="900">Black</option>
+        </select>
+      </label>
+      <button id="applyProps">Apply to Selected</button>
+
+      <h3>Quick Brand Palette</h3>
+      <div class="palette" id="palette"></div>
+    </aside>
+  </main>
+</body>
+</html>
