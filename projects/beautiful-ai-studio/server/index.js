@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS decks (
 app.use(cors());
 app.use(express.json({ limit: '3mb' }));
 
+const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
+const LLM_API_KEY = process.env.LLM_API_KEY || '';
+const LLM_MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
+
 function auth(req, res, next) {
   const hdr = req.headers.authorization || '';
   const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
@@ -130,6 +134,51 @@ app.get('/p/:slug', (req, res) => {
     })
   }).catch(()=>document.getElementById('app').innerText='Deck not found');
   </script></body></html>`);
+});
+
+app.post('/api/ai/generate', auth, async (req, res) => {
+  const { prompt } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
+
+  if (!LLM_API_KEY) {
+    return res.status(400).json({
+      error: 'LLM_API_KEY missing on server',
+      fallback: true,
+      slides: [
+        { id: 'f1', layout: 'Title', title: prompt, bullets: ['Add LLM_API_KEY to enable AI generation', 'Using fallback content for now'], notes: '' },
+        { id: 'f2', layout: 'Two Column', title: 'Context vs Action', left: ['Current challenge', 'Constraints'], right: ['Recommended approach', 'Expected impact'], notes: '' },
+      ],
+    });
+  }
+
+  const schemaHint = `Return ONLY valid JSON object with this exact shape: {"slides":[{"layout":"Title|Two Column|Metrics|Timeline","title":"...","bullets":[...],"left":[...],"right":[...],"metrics":[{"label":"...","value":"..."}],"milestones":[...],"notes":"..."}]}`;
+
+  try {
+    const r = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${LLM_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        temperature: 0.6,
+        messages: [
+          { role: 'system', content: `You are a world-class presentation designer. Generate executive-ready beautiful slides. ${schemaHint}` },
+          { role: 'user', content: `Create a 6-slide deck from this prompt: ${prompt}` },
+        ],
+      }),
+    });
+
+    const data = await r.json();
+    const text = data?.choices?.[0]?.message?.content || '';
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const slides = (parsed.slides || []).map((s, idx) => ({ id: `ai-${Date.now()}-${idx}`, ...s }));
+    return res.json({ slides });
+  } catch (e) {
+    return res.status(500).json({ error: 'AI generation failed', detail: String(e) });
+  }
 });
 
 app.listen(PORT, () => console.log(`Beautiful AI Studio API running on :${PORT}`));

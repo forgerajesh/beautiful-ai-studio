@@ -79,6 +79,7 @@ export default function App() {
   const [customCategory, setCustomCategory] = useState('Custom');
   const [customPrompt, setCustomPrompt] = useState('');
   const [customTemplates, setCustomTemplates] = useState(() => JSON.parse(localStorage.getItem('bas_custom_templates') || '[]'));
+  const [llmLoading, setLlmLoading] = useState(false);
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
@@ -117,7 +118,40 @@ export default function App() {
   const addSlide = (layout = 'Title') => { const next = { id: crypto.randomUUID(), layout, title: 'New Slide', bullets: ['Add content'], notes: '' }; setSlides((p) => [...p, next]); setActive(next.id); };
   const duplicateSlide = () => { if (!activeSlide) return; const copy = { ...activeSlide, id: crypto.randomUUID(), title: `${activeSlide.title} (Copy)` }; setSlides((p) => [...p, copy]); setActive(copy.id); };
   const removeSlide = () => { if (slides.length <= 1) return; const i = slides.findIndex((s) => s.id === active); const n = slides.filter((s) => s.id !== active); setSlides(n); setActive(n[Math.max(0, i - 1)].id); };
-  const generateDeck = () => { const generated = makeSlidesFromPrompt(prompt); setSlides(generated); setActive(generated[0].id); setDeckTitle(prompt.slice(0, 80)); setDeckId(null); };
+  const generateDeck = async () => {
+    setDeckTitle(prompt.slice(0, 80));
+    setDeckId(null);
+
+    if (!token) {
+      const generated = makeSlidesFromPrompt(prompt);
+      setSlides(generated);
+      setActive(generated[0].id);
+      return;
+    }
+
+    setLlmLoading(true);
+    try {
+      const r = await authedFetch(`${API}/ai/generate`, {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+      });
+      const d = await r.json();
+      if (d?.slides?.length) {
+        setSlides(d.slides);
+        setActive(d.slides[0].id);
+      } else {
+        const generated = makeSlidesFromPrompt(prompt);
+        setSlides(generated);
+        setActive(generated[0].id);
+      }
+    } catch {
+      const generated = makeSlidesFromPrompt(prompt);
+      setSlides(generated);
+      setActive(generated[0].id);
+    } finally {
+      setLlmLoading(false);
+    }
+  };
 
   const saveDeck = async () => { if (!token) return alert('Please login first'); const r = await authedFetch(`${API}/decks`, { method: 'POST', body: JSON.stringify({ id: deckId, title: deckTitle || 'Untitled Deck', theme: themeName, slides }) }); const d = await r.json(); if (d.id) { setDeckId(d.id); const lr = await authedFetch(`${API}/decks`); setDecks((await lr.json()).decks || []); alert('Deck saved'); } };
   const openDeck = async (id) => { const r = await authedFetch(`${API}/decks/${id}`); const d = await r.json(); if (!d.deck) return; setDeckId(d.deck.id); setDeckTitle(d.deck.title); setThemeName(d.deck.theme); setSlides(d.deck.slides); setActive(d.deck.slides[0]?.id); };
@@ -166,7 +200,7 @@ export default function App() {
     <div className="app" style={{ '--bg': theme.bg, '--card': theme.card, '--text': theme.text, '--accent': theme.accent }}>
       <header className="topbar">
         <div className="logo">Beautiful AI Studio</div>
-        <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>Generate with AI</button></div>
+        <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>{llmLoading ? 'Generating...' : 'Generate Beautiful Slides (LLM)'}</button></div>
         <div className="top-actions"><input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} /><input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />{!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}</div>
       </header>
 
