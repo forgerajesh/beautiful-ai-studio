@@ -1,6 +1,9 @@
 const canvas = document.getElementById('canvas');
 const qualityMatrix = document.getElementById('qualityMatrix');
 const importJson = document.getElementById('importJson');
+const riskScoreEl = document.getElementById('riskScore');
+const riskLabelEl = document.getElementById('riskLabel');
+const strategyOutput = document.getElementById('strategyOutput');
 
 let state = { nodes: [], links: [] };
 let selectedForLink = null;
@@ -21,6 +24,13 @@ const matrixRules = [
   ['Release Gate', 'Go/No-Go governance']
 ];
 
+const laneNames = ['Plan', 'Design', 'Build', 'Validate', 'Release'];
+
+function laneY(i) {
+  const h = canvas.clientHeight || 700;
+  return Math.floor((h / laneNames.length) * i);
+}
+
 function uid() { return 'n_' + Math.random().toString(36).slice(2, 10); }
 
 function createNode(type, x, y) {
@@ -35,10 +45,61 @@ function renderMatrix() {
     li.innerHTML = `${set.has(k) ? '✅' : '⬜'} <b>${k}</b>: ${v}`;
     qualityMatrix.appendChild(li);
   });
+
+  const coverage = [...set].length;
+  const penalty = (state.links.length < Math.max(1, state.nodes.length - 2) ? 20 : 0) + (set.has('Security') ? 0 : 15) + (set.has('Performance') ? 0 : 10) + (set.has('Release Gate') ? 0 : 10);
+  const risk = Math.max(5, Math.min(100, 100 - coverage * 6 + penalty));
+  riskScoreEl.textContent = risk;
+  riskLabelEl.textContent = risk < 35 ? 'Low risk architecture' : risk < 65 ? 'Moderate risk architecture' : 'High risk architecture';
+}
+
+function generateStrategyText() {
+  const types = state.nodes.map(n => n.type);
+  const has = (x) => types.includes(x);
+  const areas = [];
+  if (has('Requirements')) areas.push('requirements traceability model');
+  if (has('Test Strategy')) areas.push('risk-based test strategy definition');
+  if (has('Test Cases')) areas.push('functional and negative case coverage');
+  if (has('API Testing')) areas.push('API contract and service validation');
+  if (has('UI Testing')) areas.push('critical UI journey automation');
+  if (has('Performance')) areas.push('performance and load baseline');
+  if (has('Security')) areas.push('security validation gates');
+  if (has('Accessibility')) areas.push('accessibility compliance checks');
+  if (has('CI/CD')) areas.push('CI/CD quality gate orchestration');
+  if (has('Release Gate')) areas.push('formal go/no-go release checkpoint');
+
+  const missing = ['Security','Performance','Accessibility','Release Gate'].filter(k => !has(k));
+
+  return [
+    `QA Architecture Strategy (${state.nodes.length} blocks, ${state.links.length} connections)`,
+    '',
+    '1) Core coverage areas:',
+    areas.length ? `- ${areas.join('\n- ')}` : '- Add architecture blocks to generate coverage',
+    '',
+    '2) Execution approach:',
+    '- Shift-left validation from requirements through CI/CD',
+    '- Layered testing: API + UI + non-functional + governance',
+    '- Evidence-driven reporting via dashboard and release gates',
+    '',
+    '3) Risk focus:',
+    missing.length ? `- Missing controls to prioritize: ${missing.join(', ')}` : '- Critical controls are represented in the architecture board.',
+    '',
+    '4) Recommended next step:',
+    '- Convert this architecture into milestone-based implementation plan with owners and SLAs.'
+  ].join('\n');
 }
 
 function render() {
   canvas.innerHTML = '';
+
+  laneNames.forEach((name, i) => {
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    lane.style.top = `${laneY(i)}px`;
+    lane.style.height = `${Math.floor((canvas.clientHeight || 700) / laneNames.length)}px`;
+    lane.textContent = name;
+    canvas.appendChild(lane);
+  });
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('links');
@@ -146,6 +207,10 @@ importJson.onchange = async (e) => {
   render();
 };
 
+document.getElementById('generateStrategy').onclick = () => {
+  strategyOutput.textContent = generateStrategyText();
+};
+
 // seed board
 state.nodes.push(createNode('Requirements', 70, 70));
 state.nodes.push(createNode('Test Strategy', 330, 70));
@@ -157,3 +222,4 @@ state.links.push({ from: state.nodes[1].id, to: state.nodes[2].id });
 state.links.push({ from: state.nodes[1].id, to: state.nodes[3].id });
 state.links.push({ from: state.nodes[3].id, to: state.nodes[4].id });
 render();
+strategyOutput.textContent = generateStrategyText();
