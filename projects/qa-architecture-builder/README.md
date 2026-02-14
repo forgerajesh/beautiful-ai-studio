@@ -4,9 +4,17 @@ Drag-and-drop app for quality assurance architects to design test architecture w
 
 ## Features
 - Drag-and-drop QA components
+- Reference industry E2E architecture templates (Web/API, Mobile, Data/ETL)
+- Import external template JSON and apply instantly
+- Export current board as reusable template JSON
 - Connect blocks by clicking two nodes
 - Double-click to edit labels
 - Right-click to delete node
+- Undo/Redo actions
+- Auto-layout by QA lifecycle swimlanes
+- Risk scoring + validation checks
+- Effort estimator (person-day view)
+- Auto-generated test strategy narrative
 - Export/import board JSON
 - Built-in quality matrix coverage view
 

@@ -13,6 +13,39 @@ let dragMeta = null;
 let history = [];
 let future = [];
 
+const referenceTemplates = [
+  {
+    name: 'Enterprise Web/API QA E2E',
+    nodes: [
+      ['Requirements', 70, 70], ['Test Strategy', 300, 70], ['Test Cases', 530, 70],
+      ['Test Data', 760, 70], ['API Testing', 240, 230], ['UI Testing', 460, 230],
+      ['Automation Framework', 680, 230], ['CI/CD', 460, 380], ['Reporting Dashboard', 680, 380],
+      ['Security', 240, 380], ['Performance', 240, 520], ['Accessibility', 460, 520], ['Release Gate', 680, 520]
+    ],
+    links: [[0,1],[1,2],[2,4],[2,5],[3,4],[4,7],[5,7],[6,7],[7,8],[9,12],[10,12],[11,12],[8,12]]
+  },
+  {
+    name: 'Mobile App QA Architecture',
+    nodes: [
+      ['Requirements', 70, 70], ['Test Strategy', 320, 70], ['Test Cases', 570, 70],
+      ['Test Data', 820, 70], ['UI Testing', 300, 250], ['API Testing', 520, 250],
+      ['Performance', 740, 250], ['Security', 300, 430], ['Accessibility', 520, 430],
+      ['CI/CD', 740, 430], ['Reporting Dashboard', 520, 560], ['Release Gate', 740, 560]
+    ],
+    links: [[0,1],[1,2],[2,4],[2,5],[2,6],[5,9],[4,9],[6,9],[7,11],[8,11],[9,10],[10,11]]
+  },
+  {
+    name: 'Data/ETL QA Architecture',
+    nodes: [
+      ['Requirements', 70, 70], ['Test Strategy', 320, 70], ['Test Cases', 570, 70],
+      ['Test Data', 820, 70], ['API Testing', 280, 250], ['Performance', 520, 250],
+      ['Security', 760, 250], ['Automation Framework', 280, 430], ['CI/CD', 520, 430],
+      ['Reporting Dashboard', 760, 430], ['Release Gate', 760, 560]
+    ],
+    links: [[0,1],[1,2],[2,3],[2,4],[2,5],[2,6],[4,7],[5,8],[6,8],[7,8],[8,9],[9,10]]
+  }
+];
+
 const matrixRules = [
   ['Requirements', 'Traceability to tests'],
   ['Test Strategy', 'Coverage model defined'],
@@ -58,6 +91,24 @@ function uid() {
 
 function createNode(type, x, y) {
   return { id: uid(), type, label: type, x, y };
+}
+
+function templateToState(tpl) {
+  const nodes = tpl.nodes.map(([type, x, y]) => createNode(type, x, y));
+  const links = tpl.links.map(([fromIdx, toIdx]) => ({ from: nodes[fromIdx].id, to: nodes[toIdx].id }));
+  return { nodes, links };
+}
+
+function applyReferenceTemplateByName(name) {
+  const tpl = referenceTemplates.find((t) => t.name === name);
+  if (!tpl) return;
+  snapshot();
+  state = templateToState(tpl);
+  selectedForLink = null;
+  render();
+  strategyOutput.textContent = generateStrategyText();
+  renderEffort();
+  validateArchitecture();
 }
 
 function snapshot() {
@@ -340,6 +391,54 @@ importJson.onchange = async (e) => {
   validateArchitecture();
 };
 
+const referenceTemplateSelect = document.getElementById('referenceTemplate');
+referenceTemplates.forEach((t) => {
+  const opt = document.createElement('option');
+  opt.value = t.name;
+  opt.textContent = t.name;
+  referenceTemplateSelect.appendChild(opt);
+});
+
+document.getElementById('applyReference').onclick = () => {
+  applyReferenceTemplateByName(referenceTemplateSelect.value);
+};
+
+document.getElementById('exportTemplate').onclick = () => {
+  const idToIndex = new Map(state.nodes.map((n, i) => [n.id, i]));
+  const nodes = state.nodes.map((n) => [n.type, n.x, n.y]);
+  const links = state.links
+    .map((l) => [idToIndex.get(l.from), idToIndex.get(l.to)])
+    .filter(([a, b]) => Number.isInteger(a) && Number.isInteger(b));
+  const template = {
+    name: `Custom Template ${new Date().toISOString().slice(0, 10)}`,
+    nodes,
+    links,
+  };
+  const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'qa-architecture-template.json';
+  a.click();
+};
+
+const importExternalTemplate = document.getElementById('importExternalTemplate');
+document.getElementById('importExternalTemplateBtn').onclick = () => importExternalTemplate.click();
+importExternalTemplate.onchange = async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  const tpl = JSON.parse(await f.text());
+  if (!tpl?.nodes || !tpl?.links) {
+    alert('Invalid template format. Expected {name,nodes,links}.');
+    return;
+  }
+  snapshot();
+  state = templateToState(tpl);
+  render();
+  strategyOutput.textContent = generateStrategyText();
+  renderEffort();
+  validateArchitecture();
+};
+
 document.getElementById('generateStrategy').onclick = () => {
   strategyOutput.textContent = generateStrategyText();
 };
@@ -365,16 +464,8 @@ document.getElementById('validateBtn').onclick = () => {
   validateArchitecture();
 };
 
-// seed board
-state.nodes.push(createNode('Requirements', 70, 70));
-state.nodes.push(createNode('Test Strategy', 330, 70));
-state.nodes.push(createNode('Test Cases', 590, 70));
-state.nodes.push(createNode('Automation Framework', 330, 240));
-state.nodes.push(createNode('CI/CD', 590, 240));
-state.links.push({ from: state.nodes[0].id, to: state.nodes[1].id });
-state.links.push({ from: state.nodes[1].id, to: state.nodes[2].id });
-state.links.push({ from: state.nodes[1].id, to: state.nodes[3].id });
-state.links.push({ from: state.nodes[3].id, to: state.nodes[4].id });
+// seed board from first reference template
+state = templateToState(referenceTemplates[0]);
 
 render();
 strategyOutput.textContent = generateStrategyText();

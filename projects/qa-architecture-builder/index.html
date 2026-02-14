@@ -19,6 +19,13 @@
 
   <main>
     <aside class="palette" id="palette">
+      <h3>Reference Architectures</h3>
+      <select id="referenceTemplate"></select>
+      <button id="applyReference">Apply Selected Template</button>
+      <button id="exportTemplate">Export Current as Template</button>
+      <button id="importExternalTemplateBtn">Import External Template</button>
+      <input id="importExternalTemplate" type="file" accept="application/json" hidden />
+
       <h3>Drag Components</h3>
       <div class="item" draggable="true" data-type="Requirements">Requirements</div>
       <div class="item" draggable="true" data-type="Test Strategy">Test Strategy</div>
