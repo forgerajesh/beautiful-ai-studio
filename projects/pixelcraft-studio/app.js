@@ -221,6 +221,31 @@ document.getElementById('shareProject').onclick=shareProject;
 document.getElementById('addComment').onclick=addComment;
 document.getElementById('saveSharedTemplate').onclick=saveSharedTemplate;
 
+document.getElementById('aiGenerate').onclick = async () => {
+  if (!token) return alert('Login first to use AI Designer');
+  const prompt = document.getElementById('aiPrompt').value.trim();
+  const tone = document.getElementById('aiTone').value;
+  if (!prompt) return alert('Enter AI prompt');
+  autosaveStatus.textContent = 'AI generating layout...';
+  const r = await authFetch(`${API}/ai/design`, { method: 'POST', body: JSON.stringify({ prompt, tone }) });
+  const d = await r.json();
+  if (!d.design) return alert(d.error || 'AI generation failed');
+
+  canvas.clear();
+  setSize(1080, 1080);
+  canvas.setBackgroundColor(d.design.background || '#ffffff', canvas.renderAll.bind(canvas));
+  (d.design.objects || []).forEach((o) => {
+    let obj;
+    if (o.type === 'rect') obj = new fabric.Rect({ left:o.left||100, top:o.top||100, width:o.width||300, height:o.height||120, fill:o.fill||'#111827', opacity:o.opacity ?? 1, rx:10, ry:10 });
+    if (o.type === 'circle') obj = new fabric.Circle({ left:o.left||100, top:o.top||100, radius:o.radius||80, fill:o.fill||'#4f46e5', opacity:o.opacity ?? 1 });
+    if (o.type === 'text') obj = new fabric.Textbox(o.text || 'AI Text', { left:o.left||120, top:o.top||120, width:o.width||700, fill:o.fill||'#111827', fontSize:o.fontSize||48, fontWeight:o.fontWeight||'700', fontFamily:'Inter', opacity:o.opacity ?? 1 });
+    if (obj) canvas.add(obj);
+  });
+  canvas.requestRenderAll();
+  autosaveStatus.textContent = d.fallback ? 'AI fallback applied (set LLM key on server)' : 'AI layout generated';
+  queueAutosave();
+};
+
 projectListEl.onclick=(e)=>{const id=e.target.getAttribute('data-open'); if(id) openProject(id);};
 sharedTemplateListEl.onclick=(e)=>{const id=e.target.getAttribute('data-loadtpl'); if(id) useTemplate(id);};
 

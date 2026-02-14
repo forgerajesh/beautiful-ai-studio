@@ -19,6 +19,7 @@ Original Canva-like design editor (not a copy), built with Fabric.js.
 - Version history per project save
 - Project comments
 - Shared template APIs
+- LLM design endpoint (`POST /api/ai/design`) for AI layout generation
 
 Backend source:
 - `server/index.js`

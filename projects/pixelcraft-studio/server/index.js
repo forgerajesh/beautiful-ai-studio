@@ -7,6 +7,9 @@ import jwt from 'jsonwebtoken';
 const app = express();
 const PORT = process.env.PORT || 8795;
 const JWT_SECRET = process.env.JWT_SECRET || 'pixelcraft-secret';
+const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
+const LLM_API_KEY = process.env.LLM_API_KEY || '';
+const LLM_MODEL = process.env.LLM_MODEL || 'gpt-4o-mini';
 const db = new Database(new URL('./pixelcraft.db', import.meta.url).pathname);
 
 app.use(cors());
@@ -228,6 +231,46 @@ app.get('/api/templates/:id', auth, (req, res) => {
   const t = db.prepare('SELECT id,name,design_json FROM shared_templates WHERE id=?').get(Number(req.params.id));
   if (!t) return res.status(404).json({ error: 'not found' });
   res.json({ template: { ...t, design: JSON.parse(t.design_json) } });
+});
+
+app.post('/api/ai/design', auth, async (req, res) => {
+  const { prompt, tone = 'brand-forward' } = req.body || {};
+  if (!prompt) return res.status(400).json({ error: 'prompt required' });
+
+  const fallback = {
+    title: 'AI Concept Design',
+    background: '#f8fafc',
+    objects: [
+      { type: 'rect', left: 80, top: 100, width: 920, height: 360, fill: '#111827' },
+      { type: 'text', text: prompt.slice(0, 60), left: 120, top: 180, fontSize: 68, fontWeight: '800', fill: '#ffffff', width: 840 },
+      { type: 'text', text: `Tone: ${tone}`, left: 120, top: 560, fontSize: 32, fontWeight: '500', fill: '#1f2937', width: 700 }
+    ]
+  };
+
+  if (!LLM_API_KEY) return res.json({ design: fallback, fallback: true, warning: 'LLM_API_KEY missing' });
+
+  const schema = 'Return only JSON with shape: {"design":{"title":"...","background":"#hex","objects":[{"type":"text|rect|circle","text":"...","left":number,"top":number,"width":number,"height":number,"radius":number,"fill":"#hex","fontSize":number,"fontWeight":"400|600|700|800","opacity":number}]}}';
+
+  try {
+    const r = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM_API_KEY}` },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        temperature: 0.6,
+        messages: [
+          { role: 'system', content: `You are an expert visual designer. Generate Fabric-canvas-friendly layout specs. ${schema}` },
+          { role: 'user', content: `Create a social media design concept from this prompt: ${prompt}. Tone: ${tone}.` }
+        ]
+      })
+    });
+    const data = await r.json();
+    const txt = (data?.choices?.[0]?.message?.content || '').replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(txt);
+    return res.json({ design: parsed.design || fallback });
+  } catch (e) {
+    return res.json({ design: fallback, fallback: true, warning: String(e) });
+  }
 });
 
 app.listen(PORT, () => console.log(`PixelCraft API running on :${PORT}`));
