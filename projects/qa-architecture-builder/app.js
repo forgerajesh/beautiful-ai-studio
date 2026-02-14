@@ -54,40 +54,60 @@ const agileTemplates = {
   }
 };
 
-const referenceTemplates = [
-  {
-    name: 'Enterprise Web/API QA E2E',
-    category: 'full',
+const templatePresets = {
+  web_full: {
     nodes: [
-      ['Requirements', 70, 70], ['Test Strategy', 300, 70], ['Test Cases', 530, 70],
-      ['Test Data', 760, 70], ['API Testing', 240, 230], ['UI Testing', 460, 230],
-      ['Automation Framework', 680, 230], ['CI/CD', 460, 380], ['Reporting Dashboard', 680, 380],
-      ['Security', 240, 380], ['Performance', 240, 520], ['Accessibility', 460, 520], ['Release Gate', 680, 520]
+      ['Requirements',70,70],['Test Strategy',290,70],['Test Cases',510,70],['Test Data',730,70],
+      ['API Testing',220,240],['UI Testing',440,240],['Automation Framework',660,240],
+      ['CI/CD',440,420],['Reporting Dashboard',660,420],['Security',220,420],['Performance',220,560],['Accessibility',440,560],['Release Gate',660,560]
     ],
     links: [[0,1],[1,2],[2,4],[2,5],[3,4],[4,7],[5,7],[6,7],[7,8],[9,12],[10,12],[11,12],[8,12]]
   },
-  {
-    name: 'Mobile App QA Architecture',
-    category: 'full',
+  mobile_full: {
     nodes: [
-      ['Requirements', 70, 70], ['Test Strategy', 320, 70], ['Test Cases', 570, 70],
-      ['Test Data', 820, 70], ['UI Testing', 300, 250], ['API Testing', 520, 250],
-      ['Performance', 740, 250], ['Security', 300, 430], ['Accessibility', 520, 430],
-      ['CI/CD', 740, 430], ['Reporting Dashboard', 520, 560], ['Release Gate', 740, 560]
+      ['Requirements',70,70],['Test Strategy',290,70],['Test Cases',510,70],['Test Data',730,70],
+      ['UI Testing',280,240],['API Testing',500,240],['Performance',720,240],['Security',280,420],['Accessibility',500,420],['CI/CD',720,420],['Reporting Dashboard',500,560],['Release Gate',720,560]
     ],
     links: [[0,1],[1,2],[2,4],[2,5],[2,6],[5,9],[4,9],[6,9],[7,11],[8,11],[9,10],[10,11]]
   },
-  {
-    name: 'Data/ETL QA Architecture',
-    category: 'full',
+  data_full: {
     nodes: [
-      ['Requirements', 70, 70], ['Test Strategy', 320, 70], ['Test Cases', 570, 70],
-      ['Test Data', 820, 70], ['API Testing', 280, 250], ['Performance', 520, 250],
-      ['Security', 760, 250], ['Automation Framework', 280, 430], ['CI/CD', 520, 430],
-      ['Reporting Dashboard', 760, 430], ['Release Gate', 760, 560]
+      ['Requirements',70,70],['Test Strategy',290,70],['Test Cases',510,70],['Test Data',730,70],
+      ['API Testing',260,240],['Performance',480,240],['Security',700,240],['Automation Framework',260,420],['CI/CD',480,420],['Reporting Dashboard',700,420],['Release Gate',700,560]
     ],
     links: [[0,1],[1,2],[2,3],[2,4],[2,5],[2,6],[4,7],[5,8],[6,8],[7,8],[8,9],[9,10]]
+  },
+  api_first: {
+    nodes: [
+      ['Requirements',70,70],['Test Strategy',290,70],['Test Cases',510,70],['API Testing',280,240],['Automation Framework',500,240],['Security',720,240],['CI/CD',500,420],['Reporting Dashboard',720,420],['Release Gate',720,560]
+    ],
+    links: [[0,1],[1,2],[2,3],[3,4],[4,6],[5,8],[6,7],[7,8]]
   }
+};
+
+function mkTemplate(name, category, presetKey) {
+  const p = templatePresets[presetKey] || templatePresets.web_full;
+  return { name, category, nodes: p.nodes, links: p.links };
+}
+
+const referenceTemplates = [
+  mkTemplate('Enterprise Web/API QA E2E', 'full', 'web_full'),
+  mkTemplate('Mobile App QA Architecture', 'full', 'mobile_full'),
+  mkTemplate('Data/ETL QA Architecture', 'full', 'data_full'),
+  mkTemplate('Microservices API-First QA', 'full', 'api_first'),
+  mkTemplate('E-commerce End-to-End QA', 'full', 'web_full'),
+  mkTemplate('Banking Core QA Governance', 'full', 'web_full'),
+  mkTemplate('Healthcare Compliance QA', 'full', 'web_full'),
+  mkTemplate('Telecom BSS/OSS QA', 'full', 'data_full'),
+  mkTemplate('SaaS Product Scale QA', 'full', 'web_full'),
+  mkTemplate('Platform Engineering QA', 'full', 'api_first'),
+  mkTemplate('DevSecOps Continuous QA', 'hybrid', 'api_first'),
+  mkTemplate('Shift-Left + Shift-Right Hybrid QA', 'hybrid', 'web_full'),
+  mkTemplate('Release Train Hybrid QA', 'hybrid', 'mobile_full'),
+  mkTemplate('Enterprise Program Hybrid QA', 'hybrid', 'data_full'),
+  mkTemplate('Regulated Industry Hybrid QA', 'hybrid', 'web_full'),
+  mkTemplate('Performance-Critical Hybrid QA', 'hybrid', 'api_first'),
+  mkTemplate('AI-Assisted Quality Engineering', 'hybrid', 'web_full')
 ];
 
 const matrixRules = [
