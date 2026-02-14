@@ -3,63 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dino Frontier Tycoon</title>
+  <title>Dino Frontier 3D</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <h1>🦖 Dino Frontier Tycoon</h1>
-    <div class="stats">
-      <span>💰 <b id="money">0</b></span>
-      <span>😊 <b id="guests">0</b></span>
-      <span>⚡ <b id="power">0</b></span>
-      <span>🧬 <b id="research">0</b></span>
-      <span>⭐ <b id="rep">0</b></span>
-      <span>⏱️ Year <b id="year">1</b></span>
-    </div>
-  </header>
+  <div id="app">
+    <header class="hud top">
+      <div class="brand">🦖 Dino Frontier 3D</div>
+      <div class="stats">
+        <span>💰 <b id="money">9000</b></span>
+        <span>😊 <b id="guests">240</b></span>
+        <span>⭐ <b id="rep">61</b></span>
+        <span>⚡ <b id="power">74</b></span>
+      </div>
+    </header>
 
-  <main>
-    <aside class="panel">
-      <h2>Build</h2>
-      <button data-action="build" data-kind="enclosure">Enclosure ($1200)</button>
-      <button data-action="build" data-kind="power">Power Plant ($900)</button>
-      <button data-action="build" data-kind="lab">Research Lab ($1500)</button>
-      <button data-action="build" data-kind="hotel">Hotel ($1800)</button>
-      <button data-action="build" data-kind="security">Security Center ($1400)</button>
-
-      <h2>Dinos</h2>
-      <button data-action="hatch" data-kind="herbivore">Hatch Herbivore ($500)</button>
-      <button data-action="hatch" data-kind="carnivore">Hatch Carnivore ($1000)</button>
-
-      <h2>Operations</h2>
-      <button data-action="op" data-kind="marketing">Marketing Campaign ($600)</button>
-      <button data-action="op" data-kind="patrol">Ranger Patrol ($350)</button>
-      <button data-action="op" data-kind="heal">Vet Response ($450)</button>
-      <button data-action="save">Save Game</button>
-      <button data-action="reset">New Game</button>
+    <aside class="hud left">
+      <h3>Build & Hatch</h3>
+      <button data-action="spawn" data-kind="trex">+ T-Rex</button>
+      <button data-action="spawn" data-kind="raptor">+ Raptor</button>
+      <button data-action="spawn" data-kind="trike">+ Triceratops</button>
+      <button data-action="spawn" data-kind="brachio">+ Brachiosaurus</button>
+      <button data-action="camera" data-kind="tour">Tour Camera</button>
+      <button data-action="camera" data-kind="top">Top Camera</button>
+      <button data-action="weather" data-kind="storm">Storm FX</button>
     </aside>
 
-    <section class="center">
-      <div class="map" id="map"></div>
-      <div class="feed" id="feed"></div>
-    </section>
-
-    <aside class="panel right">
-      <h2>Park Overview</h2>
-      <ul id="overview"></ul>
-
-      <h2>Research Tree</h2>
-      <button data-action="research" data-kind="geno1">Genome Stability I (80 RP)</button>
-      <button data-action="research" data-kind="fence1">Advanced Fencing (100 RP)</button>
-      <button data-action="research" data-kind="tour1">Guest Tours (120 RP)</button>
-      <button data-action="research" data-kind="med1">Medical Protocols (140 RP)</button>
-
-      <h2>Unlocks</h2>
-      <ul id="unlocks"></ul>
+    <aside class="hud right">
+      <h3>Park Events</h3>
+      <div id="feed"></div>
     </aside>
-  </main>
 
-  <script src="game.js"></script>
+    <canvas id="scene"></canvas>
+  </div>
+
+  <script type="module" src="game.js"></script>
 </body>
 </html>

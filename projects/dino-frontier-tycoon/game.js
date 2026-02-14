@@ -1,219 +1,272 @@
-const els = {
-  money: document.getElementById('money'), guests: document.getElementById('guests'), power: document.getElementById('power'), research: document.getElementById('research'), rep: document.getElementById('rep'), year: document.getElementById('year'),
-  map: document.getElementById('map'), feed: document.getElementById('feed'), overview: document.getElementById('overview'), unlocks: document.getElementById('unlocks')
-};
+import * as THREE from 'https://unpkg.com/three@0.161.0/build/three.module.js';
 
-const costs = {
-  build: { enclosure: 1200, power: 900, lab: 1500, hotel: 1800, security: 1400 },
-  hatch: { herbivore: 500, carnivore: 1000 },
-  op: { marketing: 600, patrol: 350, heal: 450 },
-  research: { geno1: 80, fence1: 100, tour1: 120, med1: 140 }
-};
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
 
-let state = {
-  money: 6000, guests: 120, power: 40, research: 0, rep: 50, year: 1,
-  buildings: { enclosure: 1, power: 1, lab: 0, hotel: 0, security: 0 },
-  dinos: { herbivore: 2, carnivore: 0 },
-  incidents: [],
-  unlocks: [],
-  buffs: { safety: 0, medicine: 0, tours: 0, genome: 0 }
-};
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#091427');
+scene.fog = new THREE.Fog('#091427', 40, 180);
 
-function log(msg){
-  const p=document.createElement('p');
-  p.textContent=`• ${msg}`;
-  els.feed.prepend(p);
-  while(els.feed.children.length>80) els.feed.removeChild(els.feed.lastChild);
-}
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 500);
+camera.position.set(30, 26, 34);
 
-function canAfford(v){ return state.money >= v; }
-function spend(v){ state.money -= v; }
+const hemi = new THREE.HemisphereLight(0x89b4ff, 0x1b2b18, 0.8);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(40, 60, 20);
+sun.castShadow = true;
+scene.add(sun);
 
-function recalcDerived(){
-  const cap = state.buildings.hotel * 120 + 200;
-  if(state.guests > cap) state.guests = cap;
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(220, 220, 64, 64),
+  new THREE.MeshStandardMaterial({ color: '#284d2a', roughness: 0.95, metalness: 0.05 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
 
-  const demandPower = state.buildings.enclosure*8 + state.buildings.hotel*10 + state.dinos.herbivore*2 + state.dinos.carnivore*4 + state.buildings.lab*4;
-  state.power = Math.max(0, state.buildings.power*60 - demandPower);
-
-  if(state.power===0){ state.rep = Math.max(0, state.rep-2); state.guests = Math.max(20, state.guests-8); }
-
-  state.rep = Math.max(0, Math.min(100, state.rep));
-}
-
-function render(){
-  recalcDerived();
-  els.money.textContent = Math.round(state.money);
-  els.guests.textContent = Math.round(state.guests);
-  els.power.textContent = Math.round(state.power);
-  els.research.textContent = Math.round(state.research);
-  els.rep.textContent = Math.round(state.rep);
-  els.year.textContent = state.year;
-
-  const tiles = [
-    ['Enclosures', state.buildings.enclosure, '🦕'],
-    ['Power Plants', state.buildings.power, '⚡'],
-    ['Research Labs', state.buildings.lab, '🧪'],
-    ['Hotels', state.buildings.hotel, '🏨'],
-    ['Security', state.buildings.security, '🛡️'],
-    ['Herbivores', state.dinos.herbivore, '🌿'],
-    ['Carnivores', state.dinos.carnivore, '🥩'],
-    ['Incidents', state.incidents.length, '🚨'],
-    ['Reputation', `${state.rep}%`, '⭐'],
-    ['Guests', state.guests, '😊'],
-    ['Research', state.research, '🧬'],
-    ['Year', state.year, '⏱️'],
-  ];
-  els.map.innerHTML = '';
-  tiles.forEach(([name,val,icon])=>{
-    const d=document.createElement('div'); d.className='tile';
-    d.innerHTML=`<b>${icon} ${name}</b><span>${val}</span>`;
-    els.map.appendChild(d);
-  });
-
-  els.overview.innerHTML = `
-    <li>Revenue / tick: $${Math.round(state.guests*0.9 + state.rep*1.5)}</li>
-    <li>Ops cost / tick: $${Math.round(60 + state.dinos.herbivore*4 + state.dinos.carnivore*9 + state.buildings.security*8)}</li>
-    <li>Safety index: ${Math.max(0,Math.min(100, 45 + state.buildings.security*12 + state.buffs.safety*15 - state.dinos.carnivore*8))}</li>
-    <li>Genome quality: ${50 + state.buffs.genome*20}%</li>
-  `;
-
-  els.unlocks.innerHTML = state.unlocks.length ? state.unlocks.map(u=>`<li>${u}</li>`).join('') : '<li>No unlocks yet</li>';
-}
-
-function doBuild(kind){
-  const c = costs.build[kind];
-  if(!canAfford(c)) return log('Not enough money.');
-  spend(c);
-  state.buildings[kind]++;
-  state.rep += 1;
-  log(`${kind} constructed successfully.`);
-  render();
-}
-
-function hatch(kind){
-  if(state.buildings.enclosure < 1) return log('Build an enclosure first.');
-  const c = costs.hatch[kind];
-  if(!canAfford(c)) return log('Not enough money.');
-  if(kind==='carnivore' && !state.unlocks.includes('Genome Stability I')) return log('Research Genome Stability I first for carnivores.');
-  spend(c);
-  state.dinos[kind]++;
-  state.rep += kind==='carnivore' ? 3 : 1;
-  state.guests += kind==='carnivore' ? 20 : 10;
-  log(`${kind} added to park.`);
-  render();
-}
-
-function operation(kind){
-  const c = costs.op[kind];
-  if(!canAfford(c)) return log('Not enough money.');
-  spend(c);
-  if(kind==='marketing'){ state.guests += 35; state.rep += 2; log('Marketing increased footfall.'); }
-  if(kind==='patrol'){ state.buffs.safety += 1; log('Rangers improved park safety.'); }
-  if(kind==='heal'){ state.buffs.medicine += 1; state.incidents = state.incidents.filter(i=>i!=='Sickness'); log('Veterinary response completed.'); }
-  render();
-}
-
-function research(kind){
-  const c = costs.research[kind];
-  if(state.research < c) return log('Not enough research points.');
-  if(state.unlocks.includes(label(kind))) return log('Already researched.');
-  state.research -= c;
-  if(kind==='geno1'){ state.buffs.genome=1; state.unlocks.push('Genome Stability I'); }
-  if(kind==='fence1'){ state.buffs.safety=2; state.unlocks.push('Advanced Fencing'); }
-  if(kind==='tour1'){ state.buffs.tours=1; state.unlocks.push('Guest Tours'); state.guests += 40; }
-  if(kind==='med1'){ state.buffs.medicine=2; state.unlocks.push('Medical Protocols'); }
-  log(`Research complete: ${label(kind)}`);
-  render();
-}
-
-function label(k){ return ({geno1:'Genome Stability I', fence1:'Advanced Fencing', tour1:'Guest Tours', med1:'Medical Protocols'})[k]; }
-
-function incidentCheck(){
-  const roll = Math.random();
-  const risk = Math.max(0.03, 0.18 - state.buildings.security*0.015 - state.buffs.safety*0.02 + state.dinos.carnivore*0.02);
-  if(roll > risk) return;
-
-  const pool = ['Storm', 'Sickness', 'Fence Breach'];
-  const ev = pool[Math.floor(Math.random()*pool.length)];
-  state.incidents.push(ev);
-
-  if(ev==='Storm'){
-    state.money -= 500;
-    state.rep -= 5;
-    log('🌩️ Storm damaged facilities. Quick repairs required.');
+function addFence(x, z, w, d) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: '#5d729f' });
+  const postGeo = new THREE.BoxGeometry(0.5, 2.4, 0.5);
+  const railGeo = new THREE.BoxGeometry(1, 0.2, 0.2);
+  for (let i = -w / 2; i <= w / 2; i += 2.5) {
+    const p1 = new THREE.Mesh(postGeo, mat); p1.position.set(x + i, 1.2, z - d / 2); g.add(p1);
+    const p2 = new THREE.Mesh(postGeo, mat); p2.position.set(x + i, 1.2, z + d / 2); g.add(p2);
   }
-  if(ev==='Sickness'){
-    state.rep -= 4;
-    state.guests = Math.max(20, state.guests - 25);
-    log('🧫 Dino sickness detected. Trigger vet response.');
+  for (let i = -d / 2; i <= d / 2; i += 2.5) {
+    const p1 = new THREE.Mesh(postGeo, mat); p1.position.set(x - w / 2, 1.2, z + i); g.add(p1);
+    const p2 = new THREE.Mesh(postGeo, mat); p2.position.set(x + w / 2, 1.2, z + i); g.add(p2);
   }
-  if(ev==='Fence Breach'){
-    const loss = 300 + state.dinos.carnivore*120;
-    state.money -= loss;
-    state.rep -= 8;
-    state.guests = Math.max(10, state.guests - 40);
-    log('🚨 Fence breach! Security and patrol needed.');
+  for (let i = -w / 2; i <= w / 2; i += 1) {
+    const r1 = new THREE.Mesh(railGeo, mat); r1.position.set(x + i, 1.9, z - d / 2); g.add(r1);
+    const r2 = new THREE.Mesh(railGeo, mat); r2.position.set(x + i, 1.9, z + d / 2); g.add(r2);
   }
-  render();
-}
-
-function gameTick(){
-  const revenue = state.guests*0.9 + state.rep*1.5 + state.buffs.tours*20;
-  const ops = 60 + state.dinos.herbivore*4 + state.dinos.carnivore*9 + state.buildings.security*8 + state.buildings.lab*6;
-  state.money += revenue - ops;
-  state.research += state.buildings.lab*6 + 1;
-
-  if(state.money < -1000){
-    log('💥 Bankruptcy warning. Emergency funding injected.');
-    state.money = 1500;
-    state.rep = Math.max(20, state.rep-8);
+  for (let i = -d / 2; i <= d / 2; i += 1) {
+    const r1 = new THREE.Mesh(railGeo, mat); r1.rotation.y = Math.PI / 2; r1.position.set(x - w / 2, 1.9, z + i); g.add(r1);
+    const r2 = new THREE.Mesh(railGeo, mat); r2.rotation.y = Math.PI / 2; r2.position.set(x + w / 2, 1.9, z + i); g.add(r2);
   }
+  scene.add(g);
+}
+addFence(0, 0, 120, 120);
 
-  state.guests += (state.rep>60 ? 3 : -1) + state.buffs.tours;
-  if(state.guests < 20) state.guests = 20;
+const dinoEntities = [];
 
-  incidentCheck();
-  render();
+function makeLeg(mat, s = 1) {
+  const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.35 * s, 1.2 * s, 4, 8), mat);
+  leg.castShadow = true;
+  return leg;
 }
 
-function yearTick(){
-  state.year += 1;
-  state.rep += 2;
-  log(`📈 Year ${state.year} started. Market demand increased.`);
-  render();
+function createDino(type, pos = new THREE.Vector3((Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 80)) {
+  const cfg = {
+    trex: { color: '#6b4a2d', scale: 1.6, speed: 0.028, mood: 'predator', tail: 2.4, neck: 0.6 },
+    raptor: { color: '#4f5f3a', scale: 1.1, speed: 0.046, mood: 'hunter', tail: 1.8, neck: 0.5 },
+    trike: { color: '#5b6b58', scale: 1.5, speed: 0.022, mood: 'herbivore', tail: 1.2, neck: 0.7 },
+    brachio: { color: '#62735f', scale: 2.0, speed: 0.016, mood: 'giant', tail: 1.8, neck: 1.8 },
+  }[type];
+
+  const mat = new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.85, metalness: 0.05 });
+  const g = new THREE.Group();
+  g.position.copy(pos);
+
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(1.4 * cfg.scale, 2.2 * cfg.scale, 8, 14), mat);
+  body.rotation.z = Math.PI / 2;
+  body.castShadow = true;
+  g.add(body);
+
+  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.45 * cfg.scale, 1.3 * cfg.scale * cfg.neck, 6, 12), mat);
+  neck.position.set(1.8 * cfg.scale, 1.1 * cfg.scale, 0);
+  neck.rotation.z = -0.6;
+  neck.castShadow = true;
+  g.add(neck);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.65 * cfg.scale, 12, 12), mat);
+  head.position.set(2.5 * cfg.scale, 1.7 * cfg.scale * cfg.neck, 0);
+  head.castShadow = true;
+  g.add(head);
+
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(0.32 * cfg.scale, 2.0 * cfg.scale * cfg.tail, 6, 10), mat);
+  tail.position.set(-2.3 * cfg.scale, 0.7 * cfg.scale, 0);
+  tail.rotation.z = 0.9;
+  tail.castShadow = true;
+  g.add(tail);
+
+  const legs = [makeLeg(mat, cfg.scale), makeLeg(mat, cfg.scale), makeLeg(mat, cfg.scale), makeLeg(mat, cfg.scale)];
+  legs[0].position.set(1.2 * cfg.scale, -1.0 * cfg.scale, 0.8 * cfg.scale);
+  legs[1].position.set(1.2 * cfg.scale, -1.0 * cfg.scale, -0.8 * cfg.scale);
+  legs[2].position.set(-0.9 * cfg.scale, -1.0 * cfg.scale, 0.8 * cfg.scale);
+  legs[3].position.set(-0.9 * cfg.scale, -1.0 * cfg.scale, -0.8 * cfg.scale);
+  legs.forEach((l) => g.add(l));
+
+  scene.add(g);
+
+  const entity = { type, cfg, g, body, head, neck, tail, legs, t: Math.random() * 1000, dir: Math.random() * Math.PI * 2, targetTurn: (Math.random() - 0.5) * 0.2 };
+  dinoEntities.push(entity);
+  addFeed(`New ${type.toUpperCase()} entered the park enclosure.`);
 }
 
-function save(){
-  localStorage.setItem('dino-frontier-save', JSON.stringify(state));
-  log('Game saved.');
+const moneyEl = document.getElementById('money');
+const guestsEl = document.getElementById('guests');
+const repEl = document.getElementById('rep');
+const powerEl = document.getElementById('power');
+const feed = document.getElementById('feed');
+
+let money = 9000, guests = 240, rep = 61, power = 74;
+
+function addFeed(text) {
+  const d = document.createElement('div');
+  d.className = 'event';
+  d.textContent = text;
+  feed.prepend(d);
+  while (feed.children.length > 20) feed.removeChild(feed.lastChild);
 }
 
-function load(){
-  const raw = localStorage.getItem('dino-frontier-save');
-  if(!raw) return;
-  try { state = JSON.parse(raw); log('Save loaded.'); } catch {}
+function refreshStats() {
+  moneyEl.textContent = Math.round(money);
+  guestsEl.textContent = Math.round(guests);
+  repEl.textContent = Math.round(rep);
+  powerEl.textContent = Math.round(power);
 }
 
-function reset(){
-  localStorage.removeItem('dino-frontier-save');
-  location.reload();
+function economyTick() {
+  money += guests * 0.18 + rep * 0.9 - dinoEntities.length * 6;
+  guests += (rep - 55) * 0.06 + Math.max(0, dinoEntities.length - 2) * 0.4;
+  rep += (dinoEntities.length > 0 ? 0.06 : -0.08);
+  power -= dinoEntities.length * 0.02;
+  if (power < 30) rep -= 0.08;
+  if (Math.random() < 0.02) addFeed('Tour buses are arriving. Guest demand increased.');
+  if (Math.random() < 0.01) addFeed('Ranger team completed routine health inspection.');
+  rep = Math.max(0, Math.min(100, rep));
+  power = Math.max(0, Math.min(100, power));
+  guests = Math.max(0, Math.min(1800, guests));
+  refreshStats();
+}
+setInterval(economyTick, 1200);
+refreshStats();
+
+let storm = false;
+const rain = new THREE.Group();
+for (let i = 0; i < 220; i++) {
+  const drop = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8), new THREE.MeshBasicMaterial({ color: '#8ac7ff', transparent: true, opacity: 0.6 }));
+  drop.position.set((Math.random() - 0.5) * 180, Math.random() * 60 + 20, (Math.random() - 0.5) * 180);
+  rain.add(drop);
+}
+scene.add(rain);
+rain.visible = false;
+
+function triggerStorm() {
+  storm = !storm;
+  rain.visible = storm;
+  addFeed(storm ? '⚠️ Tropical storm entering the island.' : '✅ Storm cleared. Operations normalized.');
+  if (storm) { rep -= 5; guests -= 30; power -= 8; refreshStats(); }
 }
 
-document.addEventListener('click',(e)=>{
+let tourCamera = false;
+
+document.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-action]');
-  if(!btn) return;
+  if (!btn) return;
   const { action, kind } = btn.dataset;
-  if(action==='build') doBuild(kind);
-  if(action==='hatch') hatch(kind);
-  if(action==='op') operation(kind);
-  if(action==='research') research(kind);
-  if(action==='save') save();
-  if(action==='reset') reset();
+  if (action === 'spawn') {
+    const cost = { trex: 1800, raptor: 1300, trike: 1500, brachio: 2100 }[kind];
+    if (money < cost) return addFeed('Insufficient funds for dino incubation.');
+    money -= cost;
+    createDino(kind);
+    rep += 2;
+    guests += 15;
+    refreshStats();
+  }
+  if (action === 'camera') {
+    if (kind === 'tour') { tourCamera = true; addFeed('Tour camera activated.'); }
+    if (kind === 'top') { tourCamera = false; camera.position.set(30, 26, 34); addFeed('Top camera activated.'); }
+  }
+  if (action === 'weather' && kind === 'storm') triggerStorm();
 });
 
-load();
-render();
-log('Welcome Director. Build your world-class dinosaur park.');
-setInterval(gameTick, 2200);
-setInterval(yearTick, 28000);
+createDino('trike', new THREE.Vector3(-20, 0, -10));
+createDino('raptor', new THREE.Vector3(15, 0, 12));
+createDino('brachio', new THREE.Vector3(-6, 0, 24));
+
+const clock = new THREE.Clock();
+
+function animate() {
+  const dt = clock.getDelta();
+  const t = performance.now() * 0.001;
+
+  for (const e of dinoEntities) {
+    e.t += dt;
+    e.dir += e.targetTurn * 0.01;
+    if (Math.random() < 0.008) e.targetTurn = (Math.random() - 0.5) * 0.7;
+
+    const vx = Math.cos(e.dir) * e.cfg.speed * 60 * dt;
+    const vz = Math.sin(e.dir) * e.cfg.speed * 60 * dt;
+
+    e.g.position.x += vx;
+    e.g.position.z += vz;
+
+    // keep inside park
+    if (Math.abs(e.g.position.x) > 56 || Math.abs(e.g.position.z) > 56) {
+      e.dir += Math.PI * 0.6;
+    }
+
+    e.g.rotation.y = -e.dir;
+
+    // species-specific animation
+    const walk = Math.sin((e.t * 8) + e.g.position.x * 0.2);
+    const run = Math.sin((e.t * 16) + e.g.position.z * 0.4);
+
+    if (e.type === 'trex') {
+      e.legs[0].rotation.x = walk * 0.4; e.legs[1].rotation.x = -walk * 0.4;
+      e.legs[2].rotation.x = -walk * 0.3; e.legs[3].rotation.x = walk * 0.3;
+      e.tail.rotation.y = Math.sin(e.t * 3) * 0.22;
+      e.head.rotation.x = Math.sin(e.t * 2) * 0.05;
+    } else if (e.type === 'raptor') {
+      e.legs[0].rotation.x = run * 0.8; e.legs[1].rotation.x = -run * 0.8;
+      e.legs[2].rotation.x = -run * 0.6; e.legs[3].rotation.x = run * 0.6;
+      e.tail.rotation.y = Math.sin(e.t * 8) * 0.33;
+      e.head.rotation.x = Math.sin(e.t * 6) * 0.09;
+    } else if (e.type === 'trike') {
+      e.legs[0].rotation.x = walk * 0.28; e.legs[1].rotation.x = -walk * 0.28;
+      e.legs[2].rotation.x = -walk * 0.25; e.legs[3].rotation.x = walk * 0.25;
+      e.head.rotation.y = Math.sin(e.t * 2.5) * 0.16;
+      e.tail.rotation.y = Math.sin(e.t * 2.8) * 0.12;
+    } else if (e.type === 'brachio') {
+      e.legs[0].rotation.x = walk * 0.2; e.legs[1].rotation.x = -walk * 0.2;
+      e.legs[2].rotation.x = -walk * 0.18; e.legs[3].rotation.x = walk * 0.18;
+      e.neck.rotation.z = -0.6 + Math.sin(e.t * 1.6) * 0.07;
+      e.head.rotation.x = Math.sin(e.t * 1.2) * 0.04;
+      e.tail.rotation.y = Math.sin(e.t * 1.8) * 0.1;
+    }
+  }
+
+  if (storm) {
+    rain.children.forEach((d) => {
+      d.position.y -= 1.4;
+      if (d.position.y < 0) d.position.y = Math.random() * 60 + 30;
+    });
+  }
+
+  if (tourCamera && dinoEntities.length) {
+    const lead = dinoEntities[0].g.position;
+    camera.position.lerp(new THREE.Vector3(lead.x + 10, 8, lead.z + 10), 0.03);
+    camera.lookAt(lead.x, 2, lead.z);
+  } else {
+    camera.lookAt(0, 0, 0);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+addFeed('Welcome, Director. Build your 3D dinosaur destination.');
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+});
