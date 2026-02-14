@@ -67,6 +67,9 @@ footer { margin-top: 40px; border-top: 1px solid rgba(255,255,255,.08); padding:
 .timeline { border-left: 2px solid var(--line); padding-left: 18px; }
 .timeline .item { margin-bottom: 16px; }
 .timeline .item strong { color: #dce5ff; }
+.blog-card h3 { margin: 4px 0 8px; font-size: 20px; }
+.blog-meta { color: #93a4d6; font-size: 12px; letter-spacing: .5px; text-transform: uppercase; }
+.blog-link { color: #9ec1ff; font-weight: 600; font-size: 14px; }
 @media (max-width: 880px) {
   .grid-3, .grid-2 { grid-template-columns: 1fr; }
   .nav-links { display: none; }
