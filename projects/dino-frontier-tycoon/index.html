@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dino Frontier Tycoon</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🦖 Dino Frontier Tycoon</h1>
+    <div class="stats">
+      <span>💰 <b id="money">0</b></span>
+      <span>😊 <b id="guests">0</b></span>
+      <span>⚡ <b id="power">0</b></span>
+      <span>🧬 <b id="research">0</b></span>
+      <span>⭐ <b id="rep">0</b></span>
+      <span>⏱️ Year <b id="year">1</b></span>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h2>Build</h2>
+      <button data-action="build" data-kind="enclosure">Enclosure ($1200)</button>
+      <button data-action="build" data-kind="power">Power Plant ($900)</button>
+      <button data-action="build" data-kind="lab">Research Lab ($1500)</button>
+      <button data-action="build" data-kind="hotel">Hotel ($1800)</button>
+      <button data-action="build" data-kind="security">Security Center ($1400)</button>
+
+      <h2>Dinos</h2>
+      <button data-action="hatch" data-kind="herbivore">Hatch Herbivore ($500)</button>
+      <button data-action="hatch" data-kind="carnivore">Hatch Carnivore ($1000)</button>
+
+      <h2>Operations</h2>
+      <button data-action="op" data-kind="marketing">Marketing Campaign ($600)</button>
+      <button data-action="op" data-kind="patrol">Ranger Patrol ($350)</button>
+      <button data-action="op" data-kind="heal">Vet Response ($450)</button>
+      <button data-action="save">Save Game</button>
+      <button data-action="reset">New Game</button>
+    </aside>
+
+    <section class="center">
+      <div class="map" id="map"></div>
+      <div class="feed" id="feed"></div>
+    </section>
+
+    <aside class="panel right">
+      <h2>Park Overview</h2>
+      <ul id="overview"></ul>
+
+      <h2>Research Tree</h2>
+      <button data-action="research" data-kind="geno1">Genome Stability I (80 RP)</button>
+      <button data-action="research" data-kind="fence1">Advanced Fencing (100 RP)</button>
+      <button data-action="research" data-kind="tour1">Guest Tours (120 RP)</button>
+      <button data-action="research" data-kind="med1">Medical Protocols (140 RP)</button>
+
+      <h2>Unlocks</h2>
+      <ul id="unlocks"></ul>
+    </aside>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
