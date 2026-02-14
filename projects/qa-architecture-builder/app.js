@@ -16,6 +16,44 @@ let dragMeta = null;
 let history = [];
 let future = [];
 
+const environmentGuidance = {
+  dev: 'Fast feedback, shift-left checks, lightweight gates.',
+  qa: 'Functional + integration depth with stable data and repeatability.',
+  uat: 'Business scenario validation and traceable sign-off.',
+  staging: 'Production-like validation including non-functional and deployment checks.',
+  prod: 'Risk-controlled smoke, observability and rollback readiness.'
+};
+
+const agileTemplates = {
+  'scrum-sprint': {
+    name: 'Scrum Sprint QA Template',
+    nodes: [
+      ['Requirements', 60, 70], ['Test Strategy', 280, 70], ['Test Cases', 500, 70], ['Test Data', 720, 70],
+      ['API Testing', 220, 250], ['UI Testing', 440, 250], ['Automation Framework', 660, 250],
+      ['CI/CD', 440, 430], ['Reporting Dashboard', 660, 430], ['Release Gate', 660, 560]
+    ],
+    links: [[0,1],[1,2],[2,4],[2,5],[3,4],[5,6],[4,7],[6,7],[7,8],[8,9]]
+  },
+  'kanban-flow': {
+    name: 'Kanban Continuous QA Template',
+    nodes: [
+      ['Requirements', 60, 70], ['Test Cases', 280, 70], ['API Testing', 500, 70], ['UI Testing', 720, 70],
+      ['Automation Framework', 220, 250], ['CI/CD', 440, 250], ['Security', 660, 250],
+      ['Performance', 220, 430], ['Reporting Dashboard', 440, 430], ['Release Gate', 660, 430]
+    ],
+    links: [[0,1],[1,2],[1,3],[2,4],[3,4],[4,5],[5,6],[5,7],[6,9],[7,9],[5,8],[8,9]]
+  },
+  'safe-release-train': {
+    name: 'SAFe Release Train QA Template',
+    nodes: [
+      ['Requirements', 60, 70], ['Test Strategy', 280, 70], ['Test Cases', 500, 70], ['Test Data', 720, 70],
+      ['API Testing', 220, 250], ['UI Testing', 440, 250], ['Performance', 660, 250], ['Security', 880, 250],
+      ['Automation Framework', 220, 430], ['CI/CD', 440, 430], ['Reporting Dashboard', 660, 430], ['Release Gate', 880, 430]
+    ],
+    links: [[0,1],[1,2],[2,4],[2,5],[2,6],[2,7],[3,4],[4,8],[5,8],[8,9],[9,10],[6,11],[7,11],[10,11]]
+  }
+};
+
 const referenceTemplates = [
   {
     name: 'Enterprise Web/API QA E2E',
@@ -201,6 +239,7 @@ function detectAntiPatterns() {
 }
 
 function runAICopilotAnalysis(mode) {
+  const env = document.getElementById('environmentProfile')?.value || 'qa';
   const types = state.nodes.map((n) => n.type);
   const has = (x) => types.includes(x);
   const linkDensity = state.links.length / Math.max(1, state.nodes.length);
@@ -213,7 +252,7 @@ function runAICopilotAnalysis(mode) {
       !has('Release Gate') && 'Release governance control is absent',
       linkDensity < 0.8 && 'Low connectivity may create team silos and handoff failures',
     ].filter(Boolean);
-    return ['AI Copilot · Risk Advisor', ...topRisks.map((r) => `- ${r}`), '', topRisks.length ? 'Recommendation: prioritize controls before scaling automation.' : 'Risk posture looks balanced.'].join('\n');
+    return ['AI Copilot · Risk Advisor', `- Environment: ${env.toUpperCase()} (${environmentGuidance[env]})`, ...topRisks.map((r) => `- ${r}`), '', topRisks.length ? 'Recommendation: prioritize controls before scaling automation.' : 'Risk posture looks balanced.'].join('\n');
   }
 
   if (mode === 'coverage') {
@@ -236,6 +275,7 @@ function runAICopilotAnalysis(mode) {
 }
 
 function generateStrategyText() {
+  const env = document.getElementById('environmentProfile')?.value || 'qa';
   const types = state.nodes.map((n) => n.type);
   const has = (x) => types.includes(x);
   const areas = [];
@@ -254,6 +294,7 @@ function generateStrategyText() {
 
   return [
     `QA Architecture Strategy (${state.nodes.length} blocks, ${state.links.length} connections)`,
+    `Environment Focus: ${env.toUpperCase()} - ${environmentGuidance[env]}`,
     '',
     '1) Core coverage areas:',
     areas.length ? `- ${areas.join('\n- ')}` : '- Add architecture blocks to generate coverage',
@@ -457,6 +498,24 @@ document.getElementById('applyReference').onclick = () => {
   applyReferenceTemplateByName(referenceTemplateSelect.value);
 };
 
+document.getElementById('applyAgileTemplate').onclick = () => {
+  const key = document.getElementById('agileTemplate').value;
+  const tpl = agileTemplates[key];
+  if (!tpl) return;
+  snapshot();
+  state = templateToState(tpl);
+  render();
+  strategyOutput.textContent = generateStrategyText();
+  renderEffort();
+  validateArchitecture();
+  aiOutput.textContent = runAICopilotAnalysis(document.getElementById('aiMode').value || 'risk');
+};
+
+document.getElementById('environmentProfile').onchange = () => {
+  strategyOutput.textContent = generateStrategyText();
+  aiOutput.textContent = runAICopilotAnalysis(document.getElementById('aiMode').value || 'risk');
+};
+
 document.getElementById('exportTemplate').onclick = () => {
   const idToIndex = new Map(state.nodes.map((n, i) => [n.id, i]));
   const nodes = state.nodes.map((n) => [n.type, n.x, n.y]);
@@ -553,7 +612,8 @@ document.getElementById('exportBlueprintPack').onclick = () => {
     metadata: {
       exportedAt: new Date().toISOString(),
       app: 'QA Architecture Builder',
-      version: '2.0-innovation-pack'
+      version: '2.0-innovation-pack',
+      environment: document.getElementById('environmentProfile')?.value || 'qa'
     },
     board: state,
     strategy: generateStrategyText(),

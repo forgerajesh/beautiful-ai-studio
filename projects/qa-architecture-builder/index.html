@@ -26,6 +26,23 @@
       <button id="importExternalTemplateBtn">Import External Template</button>
       <input id="importExternalTemplate" type="file" accept="application/json" hidden />
 
+      <h3>Environment Profiles</h3>
+      <select id="environmentProfile">
+        <option value="dev">DEV</option>
+        <option value="qa" selected>QA</option>
+        <option value="uat">UAT</option>
+        <option value="staging">STAGING</option>
+        <option value="prod">PROD</option>
+      </select>
+
+      <h3>Agile Sample Kits</h3>
+      <select id="agileTemplate">
+        <option value="scrum-sprint">Scrum Sprint QA Template</option>
+        <option value="kanban-flow">Kanban Continuous QA Template</option>
+        <option value="safe-release-train">SAFe Release Train QA Template</option>
+      </select>
+      <button id="applyAgileTemplate">Apply Agile Sample</button>
+
       <h3>Drag Components</h3>
       <div class="item" draggable="true" data-type="Requirements">Requirements</div>
       <div class="item" draggable="true" data-type="Test Strategy">Test Strategy</div>

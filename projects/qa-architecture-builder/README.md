@@ -5,6 +5,8 @@ Drag-and-drop app for quality assurance architects to design test architecture w
 ## Features
 - Drag-and-drop QA components
 - Reference industry E2E architecture templates (Web/API, Mobile, Data/ETL)
+- Agile sample templates (Scrum sprint, Kanban continuous, SAFe release train)
+- Environment profiles (DEV/QA/UAT/STAGING/PROD) with context-aware guidance
 - Import external template JSON and apply instantly
 - Export current board as reusable template JSON
 - Connect blocks by clicking two nodes
