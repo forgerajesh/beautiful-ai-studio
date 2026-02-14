@@ -9,8 +9,9 @@ QA Architecture Builder is a visual architecture board for QA/test strategy desi
    - Operation ledger (`collab_ops`) and server version state (`collab_state`)
    - Idempotent op handling by `opId`
 
-2. **SSO-ready auth scaffolding**
-   - OIDC/SAML provider config stub (`/api/v3/auth/sso/config`)
+2. **Production-oriented SSO wiring scaffolding**
+   - OIDC/SAML provider config with validation + OIDC discovery verification (`/api/v3/auth/sso/config`)
+   - Token verification middleware abstraction (local JWT + env-driven external OIDC scaffold)
    - Org + user provisioning model (`orgs`, `provisioned_users`, `provisioning_logs`)
 
 3. **Granular governance workflow engine**
@@ -22,7 +23,8 @@ QA Architecture Builder is a visual architecture board for QA/test strategy desi
    - Rate templates with aggregate score
 
 5. **Advanced Jira/Azure DevOps integration layer**
-   - Provider mapping config
+   - Hardened integration settings API with provider-specific validation
+   - Secure credential storage placeholders (`kms-placeholder://...` refs + masked display)
    - Sync queue with process/retry/conflict handling
    - Conflict log tracking
 
@@ -35,6 +37,7 @@ QA Architecture Builder is a visual architecture board for QA/test strategy desi
 
 8. **Export suite**
    - Narrative-ready PDF/PPT stubs + JSON artifact bundle (`/api/v3/exports/board/:id`)
+   - Branded export themes/templates via configurable `config/branding.json` and `/api/v3/exports/branding`
 
 9. **AI draft-from-requirements flow**
    - Requirement text/file-content parsing to architecture draft
@@ -43,7 +46,9 @@ QA Architecture Builder is a visual architecture board for QA/test strategy desi
 10. **Deployment hardening assets**
    - `deploy/docker-compose.prod.yml`
    - Kubernetes baseline manifests
-   - Backup/restore scripts
+   - Nginx reverse-proxy TLS sample (`deploy/nginx/qa-architecture-builder.conf`)
+   - Backup/restore scripts + backup cron helper
+   - Healthcheck and alert hook scripts
    - Observability alert rules
 
 ## Run
@@ -81,7 +86,16 @@ or:
 - `architect / architect`
 - `viewer / viewer`
 
+## Key environment variables
+- `JWT_SECRET` - local JWT signing secret
+- `SSO_PROVIDERS_JSON` - JSON array of external SSO provider metadata
+- `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_AUDIENCE`, `OIDC_METADATA_URL` - single-provider fallback
+- `BRANDING_FILE` - optional path override for branding config (default `config/branding.json`)
+- `ALERT_WEBHOOK_URL` - used by `deploy/scripts/alert-hook.sh`
+
 ## Docs
 - `ARCHITECTURE.md`
 - `OPERATIONS.md`
 - `docs/` (extended reference docs)
+- `docs/UAT_CHECKLIST.md`
+- `docs/DEMO_WALKTHROUGH.md`

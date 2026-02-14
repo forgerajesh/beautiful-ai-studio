@@ -263,6 +263,19 @@ async function initDb() {
     updated_at TEXT NOT NULL,
     FOREIGN KEY(board_id) REFERENCES boards(id)
   )`);
+
+  await run(`CREATE TABLE IF NOT EXISTS integration_settings (
+    provider TEXT PRIMARY KEY,
+    base_url TEXT NOT NULL,
+    project_key TEXT,
+    api_version TEXT,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    field_mapping_json TEXT,
+    secret_refs_json TEXT,
+    updated_by TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`);
 }
 
 module.exports = { db, run, get, all, initDb };

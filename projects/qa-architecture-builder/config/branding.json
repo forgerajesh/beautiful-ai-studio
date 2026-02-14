@@ -1,0 +1,14 @@
+{
+  "company": "QA Architecture Builder",
+  "logoUrl": "https://example.com/logo.svg",
+  "colors": {
+    "primary": "#1f4fd6",
+    "secondary": "#0f172a",
+    "accent": "#16a34a"
+  },
+  "exportTheme": {
+    "titleTemplate": "{company} · QA Strategy Executive Pack",
+    "footerTemplate": "Confidential · Generated {dateIso}",
+    "pptSlideTheme": "enterprise-blue"
+  }
+}

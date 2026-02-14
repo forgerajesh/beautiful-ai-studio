@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { createTokenVerifier, JWT_SECRET } = require('./tokenVerifier');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const tokenVerifier = createTokenVerifier();
 
 const users = [
   { id: 'u_admin', username: 'admin', password: 'admin', role: 'admin' },
@@ -12,7 +13,7 @@ function signToken(user) {
   return jwt.sign({ sub: user.id, role: user.role, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
 }
 
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
 
@@ -22,11 +23,11 @@ function authenticate(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = { id: decoded.sub, role: decoded.role, username: decoded.username };
+    const verified = await tokenVerifier.verify(token);
+    req.user = { id: verified.sub, role: verified.role, username: verified.username, authSource: verified.source };
     return next();
   } catch (e) {
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid token', details: e.message });
   }
 }
 
@@ -36,4 +37,4 @@ function login(username, password) {
   return { token: signToken(user), user: { id: user.id, role: user.role, username: user.username } };
 }
 
-module.exports = { users, authenticate, login };
+module.exports = { users, authenticate, login, tokenVerifier };

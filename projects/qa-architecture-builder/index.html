@@ -134,7 +134,7 @@
 
       <h3>Wave3 Enterprise</h3>
       <button id="v3ApplyPatchBtn">Apply Conflict-safe Patch</button>
-      <button id="v3ProvisionBtn">SSO Provision Stub</button>
+      <button id="v3ProvisionBtn">SSO Provision</button>
       <button id="v3GovernanceBtn">Run Governance Flow</button>
       <button id="v3PublishTemplateBtn">Publish to Marketplace</button>
       <button id="v3IntegrationBtn">Queue DevOps Sync</button>
@@ -142,6 +142,23 @@
       <button id="v3PortfolioBtn">Load Portfolio Analytics</button>
       <button id="v3ExportBtn">Generate PDF/PPT Artifacts</button>
       <button id="v3AIDraftBtn">AI Draft from Requirements</button>
+
+      <h4>Integration Settings (Hardened)</h4>
+      <label>Provider
+        <select id="v3IntegrationProvider">
+          <option value="jira">Jira</option>
+          <option value="azure-devops">Azure DevOps</option>
+        </select>
+      </label>
+      <label>Base URL <input id="v3IntegrationBaseUrl" type="text" value="https://example.atlassian.net" /></label>
+      <label>Project Key/Name <input id="v3IntegrationProject" type="text" value="QAB" /></label>
+      <label>Credential/API token <input id="v3IntegrationToken" type="password" value="" /></label>
+      <button id="v3SaveIntegrationSettingsBtn">Save Integration Settings</button>
+
+      <h4>Branding</h4>
+      <label>Company <input id="v3BrandCompany" type="text" value="QA Architecture Builder" /></label>
+      <label>Primary Color <input id="v3BrandPrimary" type="text" value="#1f4fd6" /></label>
+      <button id="v3SaveBrandingBtn">Save Branding</button>
       <pre id="v3Output">Wave3 APIs ready.</pre>
     </aside>
   </main>

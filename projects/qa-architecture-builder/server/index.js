@@ -5,7 +5,7 @@ const http = require('http');
 const WebSocket = require('ws');
 
 const { initDb, run, get, all } = require('./db');
-const { authenticate, login } = require('./auth');
+const { authenticate, login, tokenVerifier } = require('./auth');
 const { requireRole } = require('./rbac');
 const { computeBoardMetrics, diffBoards, safeParse } = require('./metrics');
 const { pushToJira, pullFromJira, getSyncHealth, JIRA_MOCK_MODE } = require('./jira');
@@ -42,6 +42,19 @@ app.post('/api/v2/auth/login', (req, res) => {
 app.get('/api/v2/health', async (req, res) => {
   const b = await get('SELECT COUNT(*) as c FROM boards');
   res.json({ status: 'ok', jiraMockMode: JIRA_MOCK_MODE, boards: b?.c || 0 });
+});
+
+app.get('/api/v2/health/deep', async (req, res) => {
+  const boardCount = await get('SELECT COUNT(*) as c FROM boards');
+  const pendingSync = await get("SELECT COUNT(*) as c FROM integration_sync_queue WHERE status IN ('queued','retry','conflict')");
+  res.json({
+    status: 'ok',
+    db: 'connected',
+    boardCount: boardCount?.c || 0,
+    pendingSyncItems: pendingSync?.c || 0,
+    ssoProvidersFromEnv: tokenVerifier.getProviderCatalog(),
+    timestamp: nowIso(),
+  });
 });
 
 app.get('/api/v2/boards', async (req, res) => {

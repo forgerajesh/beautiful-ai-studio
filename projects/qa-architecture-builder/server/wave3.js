@@ -1,8 +1,27 @@
 const { run, get, all } = require('./db');
 const { requireRole } = require('./rbac');
 const { computeBoardMetrics, safeParse } = require('./metrics');
+const { validateSsoConfig, discoverOidcMetadata } = require('./sso');
+const { normalizeCredentialPayload } = require('./secrets');
+const { loadBranding, saveBranding, renderTemplate } = require('./branding');
 
 function nowIso() { return new Date().toISOString(); }
+
+function validateIntegrationSettings(provider, payload = {}) {
+  const supported = ['jira', 'azure-devops'];
+  if (!supported.includes(provider)) throw new Error('provider must be jira or azure-devops');
+  if (!payload.baseUrl || !/^https?:\/\//.test(payload.baseUrl)) throw new Error('baseUrl must be a valid http/https URL');
+  if (provider === 'jira' && !payload.projectKey) throw new Error('projectKey is required for jira');
+  if (provider === 'azure-devops' && !payload.projectKey) throw new Error('projectKey (project name) is required for azure-devops');
+  return {
+    baseUrl: payload.baseUrl.replace(/\/$/, ''),
+    projectKey: payload.projectKey || '',
+    apiVersion: payload.apiVersion || (provider === 'azure-devops' ? '7.1-preview.1' : '3'),
+    enabled: !!payload.enabled,
+    fieldMapping: payload.fieldMapping || {},
+    credentials: payload.credentials || {},
+  };
+}
 
 function buildRoadmap(gaps) {
   const phases = [
@@ -123,16 +142,33 @@ function createWave3Router({ broadcastBoard }) {
     res.json({ ok: true, baseVersion, serverVersion: nextVersion, acceptedOps: incoming.length, data: merged });
   });
 
+  router.get('/auth/sso/config', requireRole('admin'), async (req, res) => {
+    const rows = await all('SELECT provider, protocol, issuer, client_id, metadata_url, enabled, updated_at FROM sso_configs ORDER BY provider');
+    res.json({ providers: rows.map((r) => ({ ...r, client_secret: '***' })) });
+  });
+
   router.post('/auth/sso/config', requireRole('admin'), async (req, res) => {
-    const { provider, protocol, issuer, clientId, clientSecret = '', metadataUrl = '', enabled = false } = req.body || {};
-    if (!provider || !protocol || !issuer || !clientId) return res.status(400).json({ error: 'provider, protocol, issuer, clientId required' });
-    await run(
-      `INSERT INTO sso_configs (provider, protocol, issuer, client_id, client_secret, metadata_url, enabled, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(provider) DO UPDATE SET protocol=excluded.protocol, issuer=excluded.issuer, client_id=excluded.client_id, client_secret=excluded.client_secret, metadata_url=excluded.metadata_url, enabled=excluded.enabled, updated_at=excluded.updated_at`,
-      [provider, protocol, issuer, clientId, clientSecret, metadataUrl, enabled ? 1 : 0, nowIso(), nowIso()]
-    );
-    res.json({ ok: true, provider, protocol, enabled: !!enabled });
+    try {
+      const validated = validateSsoConfig(req.body || {});
+      const strictDiscovery = (req.body || {}).strictDiscovery !== false;
+      let discovery = null;
+      if (validated.protocol === 'oidc' && strictDiscovery) {
+        discovery = await discoverOidcMetadata(validated.metadataUrl);
+        if (String(discovery.issuer).replace(/\/$/, '') !== validated.issuer) {
+          return res.status(400).json({ error: 'OIDC discovery issuer mismatch' });
+        }
+      }
+
+      await run(
+        `INSERT INTO sso_configs (provider, protocol, issuer, client_id, client_secret, metadata_url, enabled, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(provider) DO UPDATE SET protocol=excluded.protocol, issuer=excluded.issuer, client_id=excluded.client_id, client_secret=excluded.client_secret, metadata_url=excluded.metadata_url, enabled=excluded.enabled, updated_at=excluded.updated_at`,
+        [validated.provider, validated.protocol, validated.issuer, validated.clientId, validated.clientSecret, validated.metadataUrl, validated.enabled ? 1 : 0, nowIso(), nowIso()]
+      );
+      res.json({ ok: true, provider: validated.provider, protocol: validated.protocol, enabled: !!validated.enabled, strictDiscovery, discoveryValidated: !!discovery });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
   router.post('/auth/sso/provision', requireRole('admin'), async (req, res) => {
@@ -225,6 +261,40 @@ function createWave3Router({ broadcastBoard }) {
     res.json({ ok: true, ...agg });
   });
 
+  router.get('/integrations/settings/:provider', requireRole('admin', 'architect'), async (req, res) => {
+    const provider = String(req.params.provider || '');
+    const row = await get('SELECT * FROM integration_settings WHERE provider = ?', [provider]);
+    if (!row) return res.json({ provider, exists: false });
+    res.json({
+      provider,
+      exists: true,
+      baseUrl: row.base_url,
+      projectKey: row.project_key,
+      apiVersion: row.api_version,
+      enabled: !!row.enabled,
+      fieldMapping: safeParse(row.field_mapping_json, {}),
+      secretRefs: safeParse(row.secret_refs_json, {}),
+      updatedAt: row.updated_at,
+    });
+  });
+
+  router.post('/integrations/settings/:provider', requireRole('admin'), async (req, res) => {
+    try {
+      const provider = String(req.params.provider || '');
+      const validated = validateIntegrationSettings(provider, req.body || {});
+      const secretRefs = normalizeCredentialPayload(validated.credentials);
+      await run(
+        `INSERT INTO integration_settings (provider, base_url, project_key, api_version, enabled, field_mapping_json, secret_refs_json, updated_by, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(provider) DO UPDATE SET base_url=excluded.base_url, project_key=excluded.project_key, api_version=excluded.api_version, enabled=excluded.enabled, field_mapping_json=excluded.field_mapping_json, secret_refs_json=excluded.secret_refs_json, updated_by=excluded.updated_by, updated_at=excluded.updated_at`,
+        [provider, validated.baseUrl, validated.projectKey, validated.apiVersion, validated.enabled ? 1 : 0, JSON.stringify(validated.fieldMapping), JSON.stringify(secretRefs), req.user.id, nowIso(), nowIso()]
+      );
+      res.json({ ok: true, provider, enabled: validated.enabled, secretRefs });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   router.post('/integrations/sync/mapping', requireRole('admin', 'architect'), async (req, res) => {
     const { boardId, provider, mapping = {}, direction = 'bidirectional' } = req.body || {};
     if (!boardId || !provider) return res.status(400).json({ error: 'boardId and provider required' });
@@ -297,14 +367,34 @@ function createWave3Router({ broadcastBoard }) {
     res.json({ summary, boards: byBoard });
   });
 
+  router.get('/exports/branding', requireRole('admin', 'architect', 'viewer'), async (req, res) => {
+    res.json({ branding: loadBranding() });
+  });
+
+  router.put('/exports/branding', requireRole('admin'), async (req, res) => {
+    const current = loadBranding();
+    const next = {
+      ...current,
+      ...(req.body || {}),
+      colors: { ...(current.colors || {}), ...((req.body || {}).colors || {}) },
+      exportTheme: { ...(current.exportTheme || {}), ...((req.body || {}).exportTheme || {}) },
+    };
+    saveBranding(next);
+    res.json({ ok: true, branding: next });
+  });
+
   router.post('/exports/board/:id', requireRole('admin', 'architect', 'viewer'), async (req, res) => {
     const board = await get('SELECT * FROM boards WHERE id = ?', [req.params.id]);
     if (!board) return res.status(404).json({ error: 'Board not found' });
     const data = safeParse(board.data_json, { nodes: [], links: [] });
     const metrics = computeBoardMetrics(board);
+    const branding = loadBranding();
+    const title = renderTemplate(branding.exportTheme.titleTemplate, branding);
+    const footer = renderTemplate(branding.exportTheme.footerTemplate, branding);
     const narrative = [
-      `# Executive Narrative: ${board.name}`,
+      `# ${title}`,
       '',
+      `## Board: ${board.name}`,
       `- Completeness: ${metrics.architectureCompleteness}%`,
       `- Release readiness: ${metrics.releaseReadiness}%`,
       `- Current risk score: ${metrics.currentRiskScore}`,
@@ -315,14 +405,26 @@ function createWave3Router({ broadcastBoard }) {
       '2. Governance and compliance posture',
       '3. Integration and delivery risk trajectory',
       '4. 90-day improvement roadmap',
+      '',
+      `---\n${footer}`,
     ].join('\n');
 
     res.json({
       boardId: board.id,
+      branding,
       exports: {
-        pdfArtifact: { type: 'pdf-ready-markdown', content: narrative },
-        pptArtifact: { type: 'ppt-ready-outline', slides: ['Title & KPI snapshot', 'Architecture coverage', 'Risk/forecast trend', 'Roadmap and asks'] },
-        jsonArtifact: { board: data, metrics },
+        pdfArtifact: { type: 'pdf-ready-markdown', theme: branding.exportTheme.pptSlideTheme, content: narrative },
+        pptArtifact: {
+          type: 'ppt-ready-outline',
+          theme: branding.exportTheme.pptSlideTheme,
+          slides: [
+            `${title} - KPI snapshot`,
+            'Architecture coverage and test depth',
+            'Risk trend and forecast',
+            'Roadmap, dependencies, executive asks',
+          ],
+        },
+        jsonArtifact: { board: data, metrics, branding },
       },
     });
   });

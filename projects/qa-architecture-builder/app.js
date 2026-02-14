@@ -835,12 +835,23 @@ document.getElementById('v3ApplyPatchBtn')?.addEventListener('click', async () =
 
 document.getElementById('v3ProvisionBtn')?.addEventListener('click', async () => {
   try {
-    await v2Api('/api/v3/auth/sso/config', { method: 'POST', body: JSON.stringify({ provider: 'okta-enterprise', protocol: 'oidc', issuer: 'https://example.okta.com', clientId: 'qa-builder', enabled: true }) });
+    await v2Api('/api/v3/auth/sso/config', {
+      method: 'POST',
+      body: JSON.stringify({
+        provider: 'okta-enterprise',
+        protocol: 'oidc',
+        issuer: 'https://example.okta.com',
+        metadataUrl: 'https://example.okta.com/.well-known/openid-configuration',
+        clientId: 'qa-builder',
+        enabled: true,
+        strictDiscovery: false,
+      }),
+    });
     const result = await v2Api('/api/v3/auth/sso/provision', {
       method: 'POST',
       body: JSON.stringify({ orgKey: 'acme', orgName: 'Acme Corp', userEmail: 'architect@acme.test', role: 'architect' }),
     });
-    v3Output.textContent = `SSO provisioned: ${result.user.email} in org ${result.org.name}`;
+    v3Output.textContent = `SSO configured + provisioned: ${result.user.email} in org ${result.org.name}`;
   } catch (e) {
     v3Output.textContent = `SSO provisioning failed: ${e.message}`;
   }
@@ -883,6 +894,42 @@ document.getElementById('v3IntegrationBtn')?.addEventListener('click', async () 
     v3Output.textContent = `Integration sync queue #${queue.queueId} processed with status=${done.status}`;
   } catch (e) {
     v3Output.textContent = `Integration flow failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3SaveIntegrationSettingsBtn')?.addEventListener('click', async () => {
+  try {
+    const provider = document.getElementById('v3IntegrationProvider')?.value || 'jira';
+    const baseUrl = document.getElementById('v3IntegrationBaseUrl')?.value || '';
+    const projectKey = document.getElementById('v3IntegrationProject')?.value || '';
+    const token = document.getElementById('v3IntegrationToken')?.value || '';
+    const saved = await v2Api(`/api/v3/integrations/settings/${provider}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        baseUrl,
+        projectKey,
+        enabled: true,
+        fieldMapping: { epic: 'name', story: 'node.label' },
+        credentials: provider === 'jira' ? { apiToken: token } : { pat: token },
+      }),
+    });
+    v3Output.textContent = `Integration settings saved for ${provider}. Secret refs: ${Object.values(saved.secretRefs || {}).map((s) => s.ref).join(', ') || 'none'}`;
+  } catch (e) {
+    v3Output.textContent = `Save integration settings failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3SaveBrandingBtn')?.addEventListener('click', async () => {
+  try {
+    const company = document.getElementById('v3BrandCompany')?.value || 'QA Architecture Builder';
+    const primary = document.getElementById('v3BrandPrimary')?.value || '#1f4fd6';
+    await v2Api('/api/v3/exports/branding', {
+      method: 'PUT',
+      body: JSON.stringify({ company, colors: { primary } }),
+    });
+    v3Output.textContent = `Branding saved for ${company} (${primary}).`;
+  } catch (e) {
+    v3Output.textContent = `Save branding failed: ${e.message}`;
   }
 });
 
