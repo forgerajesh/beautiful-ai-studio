@@ -222,4 +222,4 @@ app.post('/api/ai/improve-slide', auth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Beautiful AI Studio API running on :${PORT}`));
+app.listen(PORT, () => console.log(`DeckForge Studio API running on :${PORT}`));

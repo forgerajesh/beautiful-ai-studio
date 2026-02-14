@@ -1,7 +1,7 @@
 * { box-sizing: border-box; }
-body { margin: 0; font-family: Inter, ui-sans-serif, system-ui; background: #0b1224; }
+body { margin: 0; font-family: Inter, ui-sans-serif, system-ui; background: #0a1020; }
 .app { min-height: 100vh; background: var(--bg); color: var(--text); }
-.landing { min-height: 100vh; background: radial-gradient(900px 350px at 20% 0%, #1d4ed8 0%, #0b1224 60%); color: #eaf0ff; padding: 48px 22px; }
+.landing { min-height: 100vh; background: radial-gradient(900px 350px at 20% 0%, #5b46ff 0%, #0a1020 60%); color: #eef0ff; padding: 48px 22px; }
 .landing-hero { max-width: 920px; margin: 0 auto 24px; text-align: center; }
 .landing-hero h1 { font-size: clamp(36px, 6vw, 72px); margin: 0 0 10px; }
 .landing-hero p { opacity: .9; max-width: 760px; margin: 0 auto; }
@@ -12,7 +12,7 @@ body { margin: 0; font-family: Inter, ui-sans-serif, system-ui; background: #0b1
   height: 68px; border-bottom: 1px solid rgba(255,255,255,.12); display: grid;
   grid-template-columns: 220px 1fr 280px; align-items: center; gap: 14px; padding: 10px 16px;
 }
-.logo { font-weight: 700; color: var(--text); }
+.logo { font-weight: 800; letter-spacing: .2px; color: var(--text); }
 .prompt-wrap { display: flex; gap: 8px; }
 .prompt-wrap input, .top-actions select, .top-actions button, .left button, .right input, .right textarea, .right select {
   background: rgba(255,255,255,.06); color: var(--text); border: 1px solid rgba(255,255,255,.14); border-radius: 10px;

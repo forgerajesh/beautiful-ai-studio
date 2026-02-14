@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import pptxgen from 'pptxgenjs';
 
 const API = 'http://localhost:8787/api';
+const APP_NAME = 'DeckForge Studio';
 const THEMES = {
-  Midnight: { bg: '#0c1224', card: '#121a33', text: '#f2f5ff', accent: '#5d8bff' },
-  Snow: { bg: '#f4f7ff', card: '#ffffff', text: '#111827', accent: '#3b82f6' },
-  Emerald: { bg: '#071b1a', card: '#0b2a28', text: '#ecfffb', accent: '#14b8a6' },
+  Nebula: { bg: '#0b1022', card: '#131a34', text: '#f4f6ff', accent: '#7c5cff' },
+  Pearl: { bg: '#f5f7ff', card: '#ffffff', text: '#111827', accent: '#4f46e5' },
+  Aurora: { bg: '#071b22', card: '#0d2a33', text: '#ecffff', accent: '#06b6d4' },
 };
 const LAYOUTS = ['Title', 'Two Column', 'Metrics', 'Timeline'];
 const TEMPLATE_CATEGORIES = {
@@ -59,7 +60,7 @@ const thumb = (cat) => {
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
-  const [themeName, setThemeName] = useState('Midnight');
+  const [themeName, setThemeName] = useState('Nebula');
   const [slides, setSlides] = useState(seedSlides);
   const [active, setActive] = useState(seedSlides[0].id);
   const [prompt, setPrompt] = useState('Build an investor pitch for AI-powered test automation platform');
@@ -180,7 +181,7 @@ export default function App() {
   };
 
   const saveDeck = async () => { if (!token) return alert('Please login first'); const r = await authedFetch(`${API}/decks`, { method: 'POST', body: JSON.stringify({ id: deckId, title: deckTitle || 'Untitled Deck', theme: themeName, slides }) }); const d = await r.json(); if (d.id) { setDeckId(d.id); const lr = await authedFetch(`${API}/decks`); setDecks((await lr.json()).decks || []); alert('Deck saved'); } };
-  const openDeck = async (id) => { const r = await authedFetch(`${API}/decks/${id}`); const d = await r.json(); if (!d.deck) return; setDeckId(d.deck.id); setDeckTitle(d.deck.title); setThemeName(d.deck.theme); setSlides(d.deck.slides); setActive(d.deck.slides[0]?.id); };
+  const openDeck = async (id) => { const r = await authedFetch(`${API}/decks/${id}`); const d = await r.json(); if (!d.deck) return; setDeckId(d.deck.id); setDeckTitle(d.deck.title); setThemeName(d.deck.theme || 'Nebula'); setSlides(d.deck.slides); setActive(d.deck.slides[0]?.id); };
   const publishDeck = async () => { if (!deckId) return alert('Save deck first'); const r = await authedFetch(`${API}/decks/${deckId}/publish`, { method: 'POST' }); const d = await r.json(); if (d.url) { await navigator.clipboard.writeText(d.url); alert(`Published. Link copied:\n${d.url}`); } };
 
   const exportJson = () => { const blob = new Blob([JSON.stringify({ theme: themeName, slides }, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'beautiful-ai-studio-deck.json'; link.click(); };
@@ -209,7 +210,7 @@ export default function App() {
     return (
       <div className="landing">
         <div className="landing-hero">
-          <h1>Beautiful AI Studio</h1>
+          <h1>{APP_NAME}</h1>
           <p>Create stunning presentations with AI, 1250+ templates, publishing, and SaaS collaboration workflows.</p>
           <div className="landing-actions"><button className="primary" onClick={() => setShowLanding(false)}>Enter Studio</button></div>
         </div>
@@ -225,8 +226,8 @@ export default function App() {
   return (
     <div className="app" style={{ '--bg': theme.bg, '--card': theme.card, '--text': theme.text, '--accent': theme.accent }}>
       <header className="topbar">
-        <div className="logo">Beautiful AI Studio</div>
-        <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>{llmLoading ? 'Generating...' : 'Generate Beautiful Slides (LLM)'}</button></div>
+        <div className="logo">{APP_NAME}</div>
+        <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>{llmLoading ? 'Generating...' : 'Generate Smart Slides (LLM)'}</button></div>
         <div className="top-actions">
           <select value={tone} onChange={(e) => setTone(e.target.value)}>
             <option>Corporate</option>
