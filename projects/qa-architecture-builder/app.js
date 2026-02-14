@@ -7,6 +7,7 @@ const strategyOutput = document.getElementById('strategyOutput');
 const effortOutput = document.getElementById('effortOutput');
 const validationOutput = document.getElementById('validationOutput');
 const simulationOutput = document.getElementById('simulationOutput');
+const aiOutput = document.getElementById('aiOutput');
 const blueprintSummary = document.getElementById('blueprintSummary');
 
 let state = { nodes: [], links: [] };
@@ -197,6 +198,41 @@ function detectAntiPatterns() {
   if (!has('Security') || !has('Performance') || !has('Accessibility')) anti.push('Missing non-functional testing triad (Security/Performance/Accessibility)');
   if (state.links.length < Math.max(1, state.nodes.length - 2)) anti.push('Low architecture connectivity can create silos');
   return anti;
+}
+
+function runAICopilotAnalysis(mode) {
+  const types = state.nodes.map((n) => n.type);
+  const has = (x) => types.includes(x);
+  const linkDensity = state.links.length / Math.max(1, state.nodes.length);
+  const anti = detectAntiPatterns();
+
+  if (mode === 'risk') {
+    const topRisks = [
+      !has('Security') && 'Security validation is missing from architecture',
+      !has('Performance') && 'Performance baseline is not represented',
+      !has('Release Gate') && 'Release governance control is absent',
+      linkDensity < 0.8 && 'Low connectivity may create team silos and handoff failures',
+    ].filter(Boolean);
+    return ['AI Copilot · Risk Advisor', ...topRisks.map((r) => `- ${r}`), '', topRisks.length ? 'Recommendation: prioritize controls before scaling automation.' : 'Risk posture looks balanced.'].join('\n');
+  }
+
+  if (mode === 'coverage') {
+    const critical = ['Requirements','Test Strategy','Test Cases','API Testing','UI Testing','Security','Performance','Accessibility','CI/CD','Release Gate'];
+    const missing = critical.filter((c) => !has(c));
+    return ['AI Copilot · Coverage Optimizer', `- Critical coverage represented: ${critical.length - missing.length}/${critical.length}`, ...(missing.length ? missing.map((m) => `- Add missing area: ${m}`) : ['- Coverage is comprehensive across critical QA domains.'])].join('\n');
+  }
+
+  if (mode === 'automation') {
+    const score = (has('Automation Framework') ? 25 : 0) + (has('CI/CD') ? 25 : 0) + (has('API Testing') ? 20 : 0) + (has('UI Testing') ? 20 : 0) + (has('Reporting Dashboard') ? 10 : 0);
+    return ['AI Copilot · Automation Planner', `- Automation readiness score: ${score}/100`, `- Suggested next wave: ${score < 60 ? 'Establish framework + CI/CD gate + API suite first.' : 'Expand to flaky analysis, self-healing and release analytics.'}`].join('\n');
+  }
+
+  return [
+    'AI Copilot · Release Readiness',
+    `- Anti-patterns detected: ${anti.length}`,
+    anti.length ? `- Blockers: ${anti.join('; ')}` : '- No major blockers detected for release readiness.',
+    `- Decision: ${anti.length > 2 ? 'NO-GO until critical controls are addressed.' : 'GO with monitored risk and mitigation plan.'}`,
+  ].join('\n');
 }
 
 function generateStrategyText() {
@@ -482,6 +518,11 @@ document.getElementById('validateBtn').onclick = () => {
   validateArchitecture();
 };
 
+document.getElementById('runAICopilot').onclick = () => {
+  const mode = document.getElementById('aiMode').value;
+  aiOutput.textContent = runAICopilotAnalysis(mode);
+};
+
 document.getElementById('runSimulation').onclick = () => {
   const team = Number(document.getElementById('simTeam').value);
   const release = Number(document.getElementById('simRelease').value);
@@ -520,6 +561,7 @@ document.getElementById('exportBlueprintPack').onclick = () => {
     validation: validationOutput.textContent,
     simulation: simulationOutput.textContent,
     antiPatterns: detectAntiPatterns(),
+    aiCopilot: aiOutput.textContent,
   };
   const blob = new Blob([JSON.stringify(blueprint, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
@@ -538,3 +580,4 @@ renderEffort();
 validateArchitecture();
 simulationOutput.textContent = 'Run simulation to see projected QA health.';
 blueprintSummary.textContent = 'Export full blueprint pack for governance, planning, and audit review.';
+aiOutput.textContent = runAICopilotAnalysis('risk');
