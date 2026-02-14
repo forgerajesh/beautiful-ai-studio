@@ -1,0 +1,11 @@
+groups:
+  - name: qa-architecture-builder
+    rules:
+      - alert: QABuilderHighRisk
+        expr: qa_builder_portfolio_avg_risk > 70
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "QA Builder portfolio risk is high"
+          description: "Average risk has remained above 70 for 10 minutes"

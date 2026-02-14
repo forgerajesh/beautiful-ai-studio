@@ -1,0 +1,23 @@
+version: '3.9'
+services:
+  qa-architecture-builder:
+    build: .
+    container_name: qa-architecture-builder
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8101
+      JWT_SECRET: ${JWT_SECRET:-change-me-prod}
+      DB_PATH: /data/qa_builder_v2.db
+      JIRA_MOCK_MODE: 'false'
+    ports:
+      - "8101:8101"
+    volumes:
+      - qa_builder_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8101/api/v2/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+volumes:
+  qa_builder_data:

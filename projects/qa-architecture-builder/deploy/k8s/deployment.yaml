@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qa-architecture-builder
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: qa-architecture-builder
+  template:
+    metadata:
+      labels:
+        app: qa-architecture-builder
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/api/v2/health"
+        prometheus.io/port: "8101"
+    spec:
+      containers:
+        - name: app
+          image: qa-architecture-builder:latest
+          ports:
+            - containerPort: 8101
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "8101"
+            - name: DB_PATH
+              value: /data/qa_builder_v2.db
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: qa-architecture-builder-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qa-architecture-builder
+spec:
+  selector:
+    app: qa-architecture-builder
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8101
+  type: ClusterIP
