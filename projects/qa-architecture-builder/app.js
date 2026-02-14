@@ -57,6 +57,7 @@ const agileTemplates = {
 const referenceTemplates = [
   {
     name: 'Enterprise Web/API QA E2E',
+    category: 'full',
     nodes: [
       ['Requirements', 70, 70], ['Test Strategy', 300, 70], ['Test Cases', 530, 70],
       ['Test Data', 760, 70], ['API Testing', 240, 230], ['UI Testing', 460, 230],
@@ -67,6 +68,7 @@ const referenceTemplates = [
   },
   {
     name: 'Mobile App QA Architecture',
+    category: 'full',
     nodes: [
       ['Requirements', 70, 70], ['Test Strategy', 320, 70], ['Test Cases', 570, 70],
       ['Test Data', 820, 70], ['UI Testing', 300, 250], ['API Testing', 520, 250],
@@ -77,6 +79,7 @@ const referenceTemplates = [
   },
   {
     name: 'Data/ETL QA Architecture',
+    category: 'full',
     nodes: [
       ['Requirements', 70, 70], ['Test Strategy', 320, 70], ['Test Cases', 570, 70],
       ['Test Data', 820, 70], ['API Testing', 280, 250], ['Performance', 520, 250],
@@ -140,8 +143,31 @@ function templateToState(tpl) {
   return { nodes, links };
 }
 
+function getTemplateCatalog() {
+  const agileCatalog = [
+    { ...agileTemplates['scrum-sprint'], category: 'sprint' },
+    { ...agileTemplates['kanban-flow'], category: 'sprint' },
+    { ...agileTemplates['safe-release-train'], category: 'hybrid' },
+  ];
+  const fullCatalog = referenceTemplates.map((t) => ({ ...t, category: t.category || 'full' }));
+  return [...fullCatalog, ...agileCatalog];
+}
+
+function refreshTemplateOptions() {
+  const category = document.getElementById('templateCategory')?.value || 'all';
+  const catalog = getTemplateCatalog().filter((t) => category === 'all' || t.category === category);
+  const select = document.getElementById('referenceTemplate');
+  select.innerHTML = '';
+  catalog.forEach((t) => {
+    const opt = document.createElement('option');
+    opt.value = t.name;
+    opt.textContent = `${t.name} [${t.category.toUpperCase()}]`;
+    select.appendChild(opt);
+  });
+}
+
 function applyReferenceTemplateByName(name) {
-  const tpl = referenceTemplates.find((t) => t.name === name);
+  const tpl = getTemplateCatalog().find((t) => t.name === name);
   if (!tpl) return;
   snapshot();
   state = templateToState(tpl);
@@ -487,12 +513,11 @@ importJson.onchange = async (e) => {
 };
 
 const referenceTemplateSelect = document.getElementById('referenceTemplate');
-referenceTemplates.forEach((t) => {
-  const opt = document.createElement('option');
-  opt.value = t.name;
-  opt.textContent = t.name;
-  referenceTemplateSelect.appendChild(opt);
-});
+refreshTemplateOptions();
+
+document.getElementById('templateCategory').onchange = () => {
+  refreshTemplateOptions();
+};
 
 document.getElementById('applyReference').onclick = () => {
   applyReferenceTemplateByName(referenceTemplateSelect.value);
