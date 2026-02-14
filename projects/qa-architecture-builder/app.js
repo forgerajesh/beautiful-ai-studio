@@ -788,6 +788,135 @@ document.getElementById('v2JiraPullBtn')?.addEventListener('click', async () => 
   }
 });
 
+const v3Output = document.getElementById('v3Output');
+let v3Version = 0;
+
+document.getElementById('v3ApplyPatchBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    const node = state.nodes[0];
+    if (!node) throw new Error('Add at least one node first');
+    const opId = `ui-${Date.now()}`;
+    const result = await v2Api(`/api/v3/collab/boards/${boardId}/patches`, {
+      method: 'POST',
+      body: JSON.stringify({
+        baseVersion: v3Version,
+        operations: [{ type: 'node:update', opId, actor: 'architect-ui', ts: new Date().toISOString(), nodeId: node.id, patch: { label: `${node.label} · patched` } }],
+      }),
+    });
+    v3Version = result.serverVersion;
+    state = result.data;
+    render();
+    v3Output.textContent = `Patch merged. serverVersion=${result.serverVersion}, acceptedOps=${result.acceptedOps}`;
+  } catch (e) {
+    v3Output.textContent = `Patch failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3ProvisionBtn')?.addEventListener('click', async () => {
+  try {
+    await v2Api('/api/v3/auth/sso/config', { method: 'POST', body: JSON.stringify({ provider: 'okta-enterprise', protocol: 'oidc', issuer: 'https://example.okta.com', clientId: 'qa-builder', enabled: true }) });
+    const result = await v2Api('/api/v3/auth/sso/provision', {
+      method: 'POST',
+      body: JSON.stringify({ orgKey: 'acme', orgName: 'Acme Corp', userEmail: 'architect@acme.test', role: 'architect' }),
+    });
+    v3Output.textContent = `SSO provisioned: ${result.user.email} in org ${result.org.name}`;
+  } catch (e) {
+    v3Output.textContent = `SSO provisioning failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3GovernanceBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    const policy = await v2Api('/api/v3/governance/policies', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Enterprise Release Policy', slaHours: 24, stages: [{ name: 'Architect Approval' }, { name: 'Security Approval' }, { name: 'Release CAB' }] }),
+    });
+    const started = await v2Api(`/api/v3/governance/boards/${boardId}/start`, { method: 'POST', body: JSON.stringify({ policyId: policy.id }) });
+    const approved = await v2Api(`/api/v3/governance/instances/${started.instanceId}/action`, { method: 'POST', body: JSON.stringify({ action: 'approve', notes: 'stage-1 approved' }) });
+    v3Output.textContent = `Governance flow running. Status=${approved.status}, next=${approved.nextStage?.name || 'none'}`;
+  } catch (e) {
+    v3Output.textContent = `Governance flow failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3PublishTemplateBtn')?.addEventListener('click', async () => {
+  try {
+    const pub = await v2Api('/api/v3/marketplace/templates/publish', {
+      method: 'POST',
+      body: JSON.stringify({ name: `Wave3 Template ${new Date().toISOString().slice(0, 10)}`, tags: ['enterprise', 'wave3'], boardData: state, version: '3.0.0' }),
+    });
+    const rated = await v2Api(`/api/v3/marketplace/templates/${pub.templateId}/rate`, { method: 'POST', body: JSON.stringify({ rating: 5, comment: 'Strong enterprise baseline' }) });
+    v3Output.textContent = `Marketplace template #${pub.templateId} published. avgRating=${Number(rated.avgRating || 0).toFixed(2)}`;
+  } catch (e) {
+    v3Output.textContent = `Marketplace publish failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3IntegrationBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    await v2Api('/api/v3/integrations/sync/mapping', { method: 'POST', body: JSON.stringify({ boardId, provider: 'azure-devops', mapping: { epic: 'name', story: 'node.label' } }) });
+    const queue = await v2Api('/api/v3/integrations/sync/queue', { method: 'POST', body: JSON.stringify({ boardId, provider: 'azure-devops', payload: { change: 'board-update' } }) });
+    const done = await v2Api(`/api/v3/integrations/sync/queue/${queue.queueId}/process`, { method: 'POST', body: JSON.stringify({ simulate: 'success' }) });
+    v3Output.textContent = `Integration sync queue #${queue.queueId} processed with status=${done.status}`;
+  } catch (e) {
+    v3Output.textContent = `Integration flow failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3ComplianceBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    await v2Api('/api/v3/compliance/mappings', { method: 'POST', body: JSON.stringify({ boardId, framework: 'OWASP', controlId: 'A01:2021', controlTitle: 'Broken Access Control', evidenceLinks: ['https://evidence.local/owasp-a01'] }) });
+    await v2Api('/api/v3/compliance/mappings', { method: 'POST', body: JSON.stringify({ boardId, framework: 'ISO27001', controlId: 'A.12.6', controlTitle: 'Technical Vulnerability Mgmt', evidenceLinks: ['https://evidence.local/iso-a126'] }) });
+    await v2Api('/api/v3/compliance/mappings', { method: 'POST', body: JSON.stringify({ boardId, framework: 'SOC2', controlId: 'CC7.1', controlTitle: 'Change Management', evidenceLinks: ['https://evidence.local/soc2-cc71'] }) });
+    v3Output.textContent = 'Compliance controls mapped for OWASP / ISO / SOC2 with evidence links.';
+  } catch (e) {
+    v3Output.textContent = `Compliance mapping failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3PortfolioBtn')?.addEventListener('click', async () => {
+  try {
+    const analytics = await v2Api('/api/v3/analytics/portfolio');
+    v3Output.textContent = [
+      `Portfolio boards=${analytics.summary.boards}`,
+      `Avg completeness=${analytics.summary.avgCompleteness}%`,
+      `Avg current risk=${analytics.summary.avgRisk}`,
+      `Avg forecast risk=${analytics.summary.avgForecastRisk}`,
+    ].join('\n');
+  } catch (e) {
+    v3Output.textContent = `Portfolio analytics failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3ExportBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    const ex = await v2Api(`/api/v3/exports/board/${boardId}`, { method: 'POST' });
+    v3Output.textContent = `Export artifacts generated: ${Object.keys(ex.exports).join(', ')}`;
+  } catch (e) {
+    v3Output.textContent = `Export failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v3AIDraftBtn')?.addEventListener('click', async () => {
+  try {
+    const ai = await v2Api('/api/v3/ai/draft-from-requirements', {
+      method: 'POST',
+      body: JSON.stringify({ requirementText: 'Need secure API and UI with CI/CD release approval and performance SLA.' }),
+    });
+    state = ai.draftBoard;
+    render();
+    strategyOutput.textContent = generateStrategyText();
+    v3Output.textContent = `${ai.summary}\nGaps: ${ai.gapReport.map((g) => g.area).join(', ') || 'none'}`;
+  } catch (e) {
+    v3Output.textContent = `AI draft failed: ${e.message}`;
+  }
+});
+
 // seed board from first reference template
 state = templateToState(referenceTemplates[0]);
 
