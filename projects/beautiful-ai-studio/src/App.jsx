@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import pptxgen from 'pptxgenjs';
 
 const THEMES = {
   Midnight: { bg: '#0c1224', card: '#121a33', text: '#f2f5ff', accent: '#5d8bff' },
@@ -7,6 +8,24 @@ const THEMES = {
 };
 
 const LAYOUTS = ['Title', 'Two Column', 'Metrics', 'Timeline'];
+
+const TEMPLATES = [
+  {
+    name: 'Startup Pitch',
+    prompt: 'Create a startup pitch deck for AI-powered testing platform',
+    badge: 'Popular',
+  },
+  {
+    name: 'Quarterly Business Review',
+    prompt: 'Generate QBR deck for engineering quality transformation program',
+    badge: 'Executive',
+  },
+  {
+    name: 'Solution Proposal',
+    prompt: 'Build a client solution proposal for enterprise automation modernization',
+    badge: 'Consulting',
+  },
+];
 
 const seedSlides = [
   { id: crypto.randomUUID(), layout: 'Title', title: 'Your Presentation Title', bullets: ['AI-powered slide generation', 'Smart layouts', 'Brand themes'], notes: '' },
@@ -29,6 +48,22 @@ function App() {
   const [slides, setSlides] = useState(seedSlides);
   const [active, setActive] = useState(seedSlides[0].id);
   const [prompt, setPrompt] = useState('Build an investor pitch for AI-powered test automation platform');
+  const [user, setUser] = useState(localStorage.getItem('bas_user') || '');
+
+  useEffect(() => {
+    const raw = window.location.hash.replace('#deck=', '');
+    if (!raw) return;
+    try {
+      const decoded = JSON.parse(atob(raw));
+      if (decoded?.slides?.length) {
+        setSlides(decoded.slides);
+        setThemeName(decoded.theme || 'Midnight');
+        setActive(decoded.slides[0].id);
+      }
+    } catch (_) {
+      // ignore invalid links
+    }
+  }, []);
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
@@ -72,6 +107,55 @@ function App() {
     link.click();
   };
 
+  const exportPpt = async () => {
+    const pptx = new pptxgen();
+    pptx.layout = 'LAYOUT_WIDE';
+    slides.forEach((s) => {
+      const slide = pptx.addSlide();
+      slide.background = { color: themeName === 'Snow' ? 'FFFFFF' : '0F172A' };
+      if (s.layout === 'Title') {
+        slide.addText(s.title || '', { x: 0.6, y: 0.5, w: 12, h: 0.8, fontSize: 34, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
+        (s.bullets || []).forEach((b, i) => slide.addText(`• ${b}`, { x: 0.9, y: 1.7 + i * 0.5, w: 11, h: 0.4, fontSize: 20, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }));
+      }
+      if (s.layout === 'Two Column') {
+        slide.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
+        (s.left || []).forEach((b, i) => slide.addText(`• ${b}`, { x: 0.7, y: 1.4 + i * 0.45, w: 5.8, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }));
+        (s.right || []).forEach((b, i) => slide.addText(`• ${b}`, { x: 6.8, y: 1.4 + i * 0.45, w: 5.8, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }));
+      }
+      if (s.layout === 'Metrics') {
+        slide.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
+        (s.metrics || []).forEach((m, i) => {
+          const x = 0.8 + i * 4;
+          slide.addShape(pptx.ShapeType.roundRect, { x, y: 2.2, w: 3.4, h: 2.1, fill: { color: '1D4ED8' }, line: { color: '1D4ED8' }, rectRadius: 0.08 });
+          slide.addText(m.value || '', { x: x + 0.2, y: 2.7, w: 3, h: 0.7, fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' });
+          slide.addText(m.label || '', { x: x + 0.2, y: 3.5, w: 3, h: 0.4, fontSize: 15, color: 'DBEAFE', align: 'center' });
+        });
+      }
+      if (s.layout === 'Timeline') {
+        slide.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
+        (s.milestones || []).forEach((m, i) => {
+          slide.addShape(pptx.ShapeType.ellipse, { x: 0.9, y: 1.4 + i * 1.1, w: 0.35, h: 0.35, fill: { color: '14B8A6' }, line: { color: '14B8A6' } });
+          slide.addText(m, { x: 1.4, y: 1.35 + i * 1.1, w: 10.8, h: 0.5, fontSize: 17, color: themeName === 'Snow' ? '374151' : 'CBD5E1' });
+        });
+      }
+    });
+    await pptx.writeFile({ fileName: 'beautiful-ai-studio-deck.pptx' });
+  };
+
+  const shareDeck = async () => {
+    const payload = btoa(JSON.stringify({ theme: themeName, slides }));
+    const url = `${window.location.origin}${window.location.pathname}#deck=${payload}`;
+    await navigator.clipboard.writeText(url);
+    alert('Share link copied to clipboard.');
+  };
+
+  const signIn = () => {
+    const entered = prompt('Enter your name to continue:');
+    if (!entered) return;
+    setUser(entered);
+    localStorage.setItem('bas_user', entered);
+  };
+
   const progress = useMemo(() => Math.min(100, Math.round((slides.length / 10) * 100)), [slides.length]);
 
   return (
@@ -86,7 +170,10 @@ function App() {
           <select value={themeName} onChange={(e) => setThemeName(e.target.value)}>
             {Object.keys(THEMES).map((t) => <option key={t}>{t}</option>)}
           </select>
-          <button onClick={exportJson}>Export</button>
+          <button onClick={exportJson}>Export JSON</button>
+          <button onClick={exportPpt}>Export PPT</button>
+          <button onClick={shareDeck}>Share</button>
+          <button onClick={signIn}>{user ? `Hi, ${user}` : 'Sign In'}</button>
         </div>
       </header>
 
@@ -105,6 +192,16 @@ function App() {
             <button onClick={() => addSlide()}>+ Slide</button>
             <button onClick={duplicateSlide}>Duplicate</button>
             <button onClick={removeSlide}>Delete</button>
+          </div>
+
+          <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace</div>
+          <div className="stack">
+            {TEMPLATES.map((t) => (
+              <button key={t.name} className="thumb" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}>
+                <span>{t.name}</span>
+                <small>{t.badge}</small>
+              </button>
+            ))}
           </div>
         </aside>
 
