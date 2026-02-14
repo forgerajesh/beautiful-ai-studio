@@ -1,6 +1,13 @@
 * { box-sizing: border-box; }
-body { margin: 0; font-family: Inter, ui-sans-serif, system-ui; background: var(--bg); }
+body { margin: 0; font-family: Inter, ui-sans-serif, system-ui; background: #0b1224; }
 .app { min-height: 100vh; background: var(--bg); color: var(--text); }
+.landing { min-height: 100vh; background: radial-gradient(900px 350px at 20% 0%, #1d4ed8 0%, #0b1224 60%); color: #eaf0ff; padding: 48px 22px; }
+.landing-hero { max-width: 920px; margin: 0 auto 24px; text-align: center; }
+.landing-hero h1 { font-size: clamp(36px, 6vw, 72px); margin: 0 0 10px; }
+.landing-hero p { opacity: .9; max-width: 760px; margin: 0 auto; }
+.landing-actions { margin-top: 18px; }
+.landing-grid { max-width: 1100px; margin: 24px auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.landing-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.13); border-radius: 14px; padding: 16px; }
 .topbar {
   height: 68px; border-bottom: 1px solid rgba(255,255,255,.12); display: grid;
   grid-template-columns: 220px 1fr 280px; align-items: center; gap: 14px; padding: 10px 16px;
@@ -22,6 +29,11 @@ button.primary { background: var(--accent); color: #fff; border: none; font-weig
 .thumb { text-align: left; padding: 10px; }
 .thumb small { display: block; opacity: .8; margin-top: 4px; }
 .thumb.active { outline: 2px solid var(--accent); background: rgba(255,255,255,.1); }
+.tpl-row { display:grid; grid-template-columns: 1fr auto; gap: 6px; }
+.tpl-card { display:grid; grid-template-columns: 52px 1fr; align-items:center; gap:10px; }
+.tpl-preview { height: 46px; border-radius: 10px; display:grid; place-items:center; font-size: 22px; }
+.fav-board { display: flex; flex-wrap: wrap; gap: 8px; }
+.fav-chip { padding: 8px 10px; border-radius: 999px; color: #fff; font-size: 12px; border: 1px solid rgba(255,255,255,.28); cursor: grab; }
 .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
 .canvas-wrap { display: grid; place-items: center; }
 .slide {
@@ -44,4 +56,5 @@ button.primary { background: var(--accent); color: #fff; border: none; font-weig
 @media (max-width: 1200px) {
   .workspace { grid-template-columns: 1fr; height: auto; }
   .slide { width: 100%; }
+  .landing-grid { grid-template-columns: 1fr; }
 }

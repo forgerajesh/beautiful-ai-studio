@@ -26,25 +26,18 @@ const TEMPLATES = (() => {
   let i = 1;
   Object.entries(TEMPLATE_CATEGORIES).forEach(([cat, patterns]) => {
     for (let n = 1; n <= 25; n += 1) {
-      patterns.forEach((p) => {
-        out.push({
-          id: i++,
-          name: `${cat} ${p} ${n}`,
-          category: cat,
-          prompt: `Create a ${cat.toLowerCase()} ${p.toLowerCase()} presentation with executive storytelling, clear visuals, and action-oriented slides.`,
-          badge: cat,
-        });
-      });
+      patterns.forEach((p) => out.push({ id: i++, name: `${cat} ${p} ${n}`, category: cat, prompt: `Create a ${cat.toLowerCase()} ${p.toLowerCase()} presentation with executive storytelling, clear visuals, and action-oriented slides.`, badge: cat }));
     }
   });
-  return out; // 10 categories x 5 patterns x 25 variants = 1250 templates
+  return out;
 })();
+
 const seedSlides = [
   { id: crypto.randomUUID(), layout: 'Title', title: 'Your Presentation Title', bullets: ['AI-powered slide generation', 'Smart layouts', 'Brand themes'], notes: '' },
   { id: crypto.randomUUID(), layout: 'Two Column', title: 'Problem vs Solution', left: ['Manual deck creation is slow', 'Inconsistent design quality'], right: ['Use AI prompt to draft structure', 'Auto-fit content into layouts'], notes: '' },
 ];
 
-function makeSlidesFromPrompt(prompt) {
+const makeSlidesFromPrompt = (prompt) => {
   const topic = prompt.trim() || 'AI Transformation Strategy';
   return [
     { id: crypto.randomUUID(), layout: 'Title', title: topic, bullets: ['Executive-ready storytelling', 'Clean visual hierarchy', 'Built in seconds'], notes: '' },
@@ -52,9 +45,20 @@ function makeSlidesFromPrompt(prompt) {
     { id: crypto.randomUUID(), layout: 'Metrics', title: 'Expected Impact', metrics: [{ label: 'Time Saved', value: '70%' }, { label: 'Consistency', value: '95%' }, { label: 'Engagement', value: '+40%' }], notes: '' },
     { id: crypto.randomUUID(), layout: 'Timeline', title: 'Rollout Plan', milestones: ['Week 1: Brand and content setup', 'Week 2: AI generation workflows', 'Week 3: Team enablement', 'Week 4: Production launch'], notes: '' },
   ];
-}
+};
+
+const thumb = (cat) => {
+  const map = {
+    Startup: ['🚀', 'linear-gradient(135deg,#1d4ed8,#7c3aed)'], Enterprise: ['🏢', 'linear-gradient(135deg,#0f766e,#2563eb)'], Marketing: ['📣', 'linear-gradient(135deg,#d946ef,#ec4899)'],
+    Sales: ['💼', 'linear-gradient(135deg,#f59e0b,#ef4444)'], Education: ['🎓', 'linear-gradient(135deg,#0ea5e9,#22c55e)'], Product: ['🧩', 'linear-gradient(135deg,#8b5cf6,#3b82f6)'],
+    Technology: ['⚙️', 'linear-gradient(135deg,#334155,#2563eb)'], Consulting: ['📊', 'linear-gradient(135deg,#0f766e,#14b8a6)'], HR: ['👥', 'linear-gradient(135deg,#7c3aed,#ec4899)'],
+    Finance: ['💹', 'linear-gradient(135deg,#14532d,#16a34a)'], Custom: ['✨', 'linear-gradient(135deg,#0f172a,#475569)'],
+  };
+  return map[cat] || ['📄', 'linear-gradient(135deg,#1f2937,#4b5563)'];
+};
 
 export default function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const [themeName, setThemeName] = useState('Midnight');
   const [slides, setSlides] = useState(seedSlides);
   const [active, setActive] = useState(seedSlides[0].id);
@@ -69,6 +73,8 @@ export default function App() {
   const [templateCategory, setTemplateCategory] = useState('All');
   const [templateLimit, setTemplateLimit] = useState(60);
   const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('bas_favorites') || '[]'));
+  const [favoriteOrder, setFavoriteOrder] = useState(() => JSON.parse(localStorage.getItem('bas_favorite_order') || '[]'));
+  const [draggingFav, setDraggingFav] = useState(null);
   const [customName, setCustomName] = useState('');
   const [customCategory, setCustomCategory] = useState('Custom');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -76,31 +82,35 @@ export default function App() {
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
-
   const authedFetch = (url, opts = {}) => fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(opts.headers || {}) } });
 
-  const loadDecks = async () => {
+  const allTemplates = useMemo(() => [...customTemplates, ...TEMPLATES], [customTemplates]);
+  const byId = useMemo(() => new Map(allTemplates.map((t) => [String(t.id || t.name), t])), [allTemplates]);
+
+  const filteredTemplates = useMemo(() => {
+    const q = templateSearch.trim().toLowerCase();
+    const source = templateCategory === 'Favorites' ? allTemplates.filter((t) => favorites.includes(String(t.id || t.name))) : allTemplates;
+    return source.filter((t) => (templateCategory === 'All' || templateCategory === 'Favorites' || t.category === templateCategory) && (!q || t.name.toLowerCase().includes(q) || t.prompt.toLowerCase().includes(q)));
+  }, [templateSearch, templateCategory, allTemplates, favorites]);
+
+  const favoriteTemplates = useMemo(() => {
+    const base = favorites.map((id) => byId.get(String(id))).filter(Boolean);
+    const ordered = favoriteOrder.map((id) => byId.get(String(id))).filter(Boolean);
+    const extra = base.filter((t) => !ordered.find((o) => String(o.id || o.name) === String(t.id || t.name)));
+    return [...ordered, ...extra];
+  }, [favorites, favoriteOrder, byId]);
+
+  useEffect(() => { if (favoriteTemplates.length) { const ids = favoriteTemplates.map((t) => String(t.id || t.name)); setFavoriteOrder(ids); localStorage.setItem('bas_favorite_order', JSON.stringify(ids)); } }, [favorites.length]);
+  useEffect(() => {
     if (!token) return;
-    const r = await authedFetch(`${API}/decks`);
-    if (!r.ok) return;
-    const d = await r.json();
-    setDecks(d.decks || []);
-  };
+    authedFetch(`${API}/decks`)
+      .then((r) => r.json())
+      .then((d) => setDecks(d.decks || []))
+      .catch(() => {});
+  }, [token]);
 
-  useEffect(() => { loadDecks(); }, [token]);
-
-  const register = async () => {
-    const r = await fetch(`${API}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name: email.split('@')[0] }) });
-    const d = await r.json();
-    if (d.token) { localStorage.setItem('bas_token', d.token); setToken(d.token); }
-    else alert(d.error || 'Register failed');
-  };
-  const login = async () => {
-    const r = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-    const d = await r.json();
-    if (d.token) { localStorage.setItem('bas_token', d.token); setToken(d.token); }
-    else alert(d.error || 'Login failed');
-  };
+  const register = async () => { const r = await fetch(`${API}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name: email.split('@')[0] }) }); const d = await r.json(); d.token ? (localStorage.setItem('bas_token', d.token), setToken(d.token)) : alert(d.error || 'Register failed'); };
+  const login = async () => { const r = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }); const d = await r.json(); d.token ? (localStorage.setItem('bas_token', d.token), setToken(d.token)) : alert(d.error || 'Login failed'); };
   const logout = () => { localStorage.removeItem('bas_token'); setToken(''); setDecks([]); };
 
   const applyPatch = (patch) => setSlides((prev) => prev.map((s) => (s.id === active ? { ...s, ...patch } : s)));
@@ -109,167 +119,86 @@ export default function App() {
   const removeSlide = () => { if (slides.length <= 1) return; const i = slides.findIndex((s) => s.id === active); const n = slides.filter((s) => s.id !== active); setSlides(n); setActive(n[Math.max(0, i - 1)].id); };
   const generateDeck = () => { const generated = makeSlidesFromPrompt(prompt); setSlides(generated); setActive(generated[0].id); setDeckTitle(prompt.slice(0, 80)); setDeckId(null); };
 
-  const saveDeck = async () => {
-    if (!token) return alert('Please login first');
-    const r = await authedFetch(`${API}/decks`, { method: 'POST', body: JSON.stringify({ id: deckId, title: deckTitle || 'Untitled Deck', theme: themeName, slides }) });
-    const d = await r.json();
-    if (d.id) { setDeckId(d.id); await loadDecks(); alert('Deck saved'); }
-  };
+  const saveDeck = async () => { if (!token) return alert('Please login first'); const r = await authedFetch(`${API}/decks`, { method: 'POST', body: JSON.stringify({ id: deckId, title: deckTitle || 'Untitled Deck', theme: themeName, slides }) }); const d = await r.json(); if (d.id) { setDeckId(d.id); const lr = await authedFetch(`${API}/decks`); setDecks((await lr.json()).decks || []); alert('Deck saved'); } };
+  const openDeck = async (id) => { const r = await authedFetch(`${API}/decks/${id}`); const d = await r.json(); if (!d.deck) return; setDeckId(d.deck.id); setDeckTitle(d.deck.title); setThemeName(d.deck.theme); setSlides(d.deck.slides); setActive(d.deck.slides[0]?.id); };
+  const publishDeck = async () => { if (!deckId) return alert('Save deck first'); const r = await authedFetch(`${API}/decks/${deckId}/publish`, { method: 'POST' }); const d = await r.json(); if (d.url) { await navigator.clipboard.writeText(d.url); alert(`Published. Link copied:\n${d.url}`); } };
 
-  const openDeck = async (id) => {
-    const r = await authedFetch(`${API}/decks/${id}`);
-    const d = await r.json();
-    if (!d.deck) return;
-    setDeckId(d.deck.id);
-    setDeckTitle(d.deck.title);
-    setThemeName(d.deck.theme);
-    setSlides(d.deck.slides);
-    setActive(d.deck.slides[0]?.id);
-  };
+  const exportJson = () => { const blob = new Blob([JSON.stringify({ theme: themeName, slides }, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'beautiful-ai-studio-deck.json'; link.click(); };
+  const exportPpt = async () => { const p = new pptxgen(); p.layout = 'LAYOUT_WIDE'; slides.forEach((s) => { const sl = p.addSlide(); sl.background = { color: themeName === 'Snow' ? 'FFFFFF' : '0F172A' }; sl.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.7, fontSize: 30, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' }); if (s.layout === 'Two Column') { (s.left || []).forEach((b, i) => sl.addText(`• ${b}`, { x: 0.7, y: 1.3 + i * 0.45, w: 5.7, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' })); (s.right || []).forEach((b, i) => sl.addText(`• ${b}`, { x: 6.8, y: 1.3 + i * 0.45, w: 5.7, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' })); } else if (s.layout === 'Metrics') { (s.metrics || []).forEach((m, i) => { const x = 0.8 + i * 4; sl.addShape(p.ShapeType.roundRect, { x, y: 2.1, w: 3.4, h: 2.1, fill: { color: '1D4ED8' }, line: { color: '1D4ED8' }, rectRadius: 0.08 }); sl.addText(m.value || '', { x: x + 0.2, y: 2.6, w: 3, h: 0.7, fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' }); sl.addText(m.label || '', { x: x + 0.2, y: 3.4, w: 3, h: 0.4, fontSize: 15, color: 'DBEAFE', align: 'center' }); }); } else if (s.layout === 'Timeline') { (s.milestones || []).forEach((m, i) => { sl.addShape(p.ShapeType.ellipse, { x: 0.9, y: 1.4 + i * 1.1, w: 0.35, h: 0.35, fill: { color: '14B8A6' }, line: { color: '14B8A6' } }); sl.addText(m, { x: 1.4, y: 1.35 + i * 1.1, w: 10.8, h: 0.5, fontSize: 17, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }); }); } else { (s.bullets || []).forEach((b, i) => sl.addText(`• ${b}`, { x: 0.9, y: 1.6 + i * 0.5, w: 11, h: 0.4, fontSize: 20, color: themeName === 'Snow' ? '374151' : 'CBD5E1' })); } }); await p.writeFile({ fileName: 'beautiful-ai-studio-deck.pptx' }); };
 
-  const publishDeck = async () => {
-    if (!deckId) return alert('Save deck first');
-    const r = await authedFetch(`${API}/decks/${deckId}/publish`, { method: 'POST' });
-    const d = await r.json();
-    if (d.url) {
-      await navigator.clipboard.writeText(d.url);
-      alert(`Published. Link copied:\n${d.url}`);
-      await loadDecks();
-    }
-  };
-
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify({ theme: themeName, slides }, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'beautiful-ai-studio-deck.json'; link.click();
-  };
-
-  const exportPpt = async () => {
-    const pptx = new pptxgen();
-    pptx.layout = 'LAYOUT_WIDE';
-    slides.forEach((s) => {
-      const slide = pptx.addSlide();
-      slide.background = { color: themeName === 'Snow' ? 'FFFFFF' : '0F172A' };
-      if (s.layout === 'Title') {
-        slide.addText(s.title || '', { x: 0.6, y: 0.5, w: 12, h: 0.8, fontSize: 34, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
-        (s.bullets || []).forEach((b, i) => slide.addText(`• ${b}`, { x: 0.9, y: 1.7 + i * 0.5, w: 11, h: 0.4, fontSize: 20, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }));
-      } else if (s.layout === 'Two Column') {
-        slide.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
-        (s.left || []).forEach((b, i) => slide.addText(`• ${b}`, { x: 0.7, y: 1.4 + i * 0.45, w: 5.8, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }));
-        (s.right || []).forEach((b, i) => slide.addText(`• ${b}`, { x: 6.8, y: 1.4 + i * 0.45, w: 5.8, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }));
-      } else if (s.layout === 'Metrics') {
-        slide.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
-        (s.metrics || []).forEach((m, i) => {
-          const x = 0.8 + i * 4;
-          slide.addShape(pptx.ShapeType.roundRect, { x, y: 2.2, w: 3.4, h: 2.1, fill: { color: '1D4ED8' }, line: { color: '1D4ED8' }, rectRadius: 0.08 });
-          slide.addText(m.value || '', { x: x + 0.2, y: 2.7, w: 3, h: 0.7, fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' });
-          slide.addText(m.label || '', { x: x + 0.2, y: 3.5, w: 3, h: 0.4, fontSize: 15, color: 'DBEAFE', align: 'center' });
-        });
-      } else {
-        slide.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' });
-        (s.milestones || []).forEach((m, i) => {
-          slide.addShape(pptx.ShapeType.ellipse, { x: 0.9, y: 1.4 + i * 1.1, w: 0.35, h: 0.35, fill: { color: '14B8A6' }, line: { color: '14B8A6' } });
-          slide.addText(m, { x: 1.4, y: 1.35 + i * 1.1, w: 10.8, h: 0.5, fontSize: 17, color: themeName === 'Snow' ? '374151' : 'CBD5E1' });
-        });
-      }
-    });
-    await pptx.writeFile({ fileName: 'beautiful-ai-studio-deck.pptx' });
-  };
-
-  const allTemplates = useMemo(() => [...customTemplates, ...TEMPLATES], [customTemplates]);
-
-  const filteredTemplates = useMemo(() => {
-    const q = templateSearch.trim().toLowerCase();
-    const source = templateCategory === 'Favorites'
-      ? allTemplates.filter((t) => favorites.includes(t.id || t.name))
-      : allTemplates;
-    return source.filter((t) => {
-      const catOk = templateCategory === 'All' || templateCategory === 'Favorites' || t.category === templateCategory;
-      const qOk = !q || t.name.toLowerCase().includes(q) || t.prompt.toLowerCase().includes(q);
-      return catOk && qOk;
-    });
-  }, [templateSearch, templateCategory, allTemplates, favorites]);
-
-  const toggleFavorite = (templateKey) => {
-    setFavorites((prev) => {
-      const next = prev.includes(templateKey) ? prev.filter((x) => x !== templateKey) : [...prev, templateKey];
-      localStorage.setItem('bas_favorites', JSON.stringify(next));
-      return next;
-    });
-  };
-
+  const toggleFavorite = (k) => setFavorites((prev) => { const key = String(k); const next = prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]; localStorage.setItem('bas_favorites', JSON.stringify(next)); return next; });
   const addCustomTemplate = () => {
     if (!customName.trim() || !customPrompt.trim()) return;
-    const t = {
-      id: `custom-${Date.now()}`,
-      name: customName.trim(),
-      category: customCategory.trim() || 'Custom',
-      prompt: customPrompt.trim(),
-      badge: 'Custom',
-    };
-    const next = [t, ...customTemplates];
-    setCustomTemplates(next);
-    localStorage.setItem('bas_custom_templates', JSON.stringify(next));
-    setCustomName('');
-    setCustomPrompt('');
-    setTemplateCategory('All');
+    const t = { id: `custom-${Date.now()}`, name: customName.trim(), category: customCategory.trim() || 'Custom', prompt: customPrompt.trim(), badge: 'Custom' };
+    const next = [t, ...customTemplates]; setCustomTemplates(next); localStorage.setItem('bas_custom_templates', JSON.stringify(next)); setCustomName(''); setCustomPrompt('');
+  };
+
+  const onDragStartFav = (id) => setDraggingFav(String(id));
+  const onDropFav = (overId) => {
+    const over = String(overId); if (!draggingFav || draggingFav === over) return;
+    const list = [...favoriteOrder.filter((x) => favorites.includes(x))];
+    const from = list.indexOf(draggingFav); const to = list.indexOf(over);
+    if (from < 0 || to < 0) return;
+    const [it] = list.splice(from, 1); list.splice(to, 0, it);
+    setFavoriteOrder(list); localStorage.setItem('bas_favorite_order', JSON.stringify(list)); setDraggingFav(null);
   };
 
   const progress = useMemo(() => Math.min(100, Math.round((slides.length / 10) * 100)), [slides.length]);
+
+  if (showLanding) {
+    return (
+      <div className="landing">
+        <div className="landing-hero">
+          <h1>Beautiful AI Studio</h1>
+          <p>Create stunning presentations with AI, 1250+ templates, publishing, and SaaS collaboration workflows.</p>
+          <div className="landing-actions"><button className="primary" onClick={() => setShowLanding(false)}>Enter Studio</button></div>
+        </div>
+        <div className="landing-grid">
+          <div className="landing-card"><h3>1250+ Formats</h3><p>Category-based template library with smart search.</p></div>
+          <div className="landing-card"><h3>Drag & Drop Favorites</h3><p>Reorder your top templates for rapid creation.</p></div>
+          <div className="landing-card"><h3>Publish & Share</h3><p>One-click public links for final decks.</p></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app" style={{ '--bg': theme.bg, '--card': theme.card, '--text': theme.text, '--accent': theme.accent }}>
       <header className="topbar">
         <div className="logo">Beautiful AI Studio</div>
-        <div className="prompt-wrap">
-          <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." />
-          <button className="primary" onClick={generateDeck}>Generate with AI</button>
-        </div>
-        <div className="top-actions">
-          <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          {!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}
-        </div>
+        <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>Generate with AI</button></div>
+        <div className="top-actions"><input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} /><input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />{!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}</div>
       </header>
 
       <div className="workspace">
         <aside className="left">
           <div className="panel-title">Slides</div>
           <input value={deckTitle} onChange={(e) => setDeckTitle(e.target.value)} placeholder="Deck title" style={{ width: '100%', marginBottom: 10, padding: 10 }} />
-          <div className="stack">
-            {slides.map((s, i) => (
-              <button key={s.id} className={`thumb ${s.id === active ? 'active' : ''}`} onClick={() => setActive(s.id)}>
-                <span>{i + 1}. {s.layout}</span><small>{s.title}</small>
-              </button>
-            ))}
-          </div>
+          <div className="stack">{slides.map((s, i) => <button key={s.id} className={`thumb ${s.id === active ? 'active' : ''}`} onClick={() => setActive(s.id)}><span>{i + 1}. {s.layout}</span><small>{s.title}</small></button>)}</div>
           <div className="row"><button onClick={() => addSlide()}>+ Slide</button><button onClick={duplicateSlide}>Duplicate</button><button onClick={removeSlide}>Delete</button></div>
           <div className="row" style={{ marginTop: 8 }}><button onClick={saveDeck}>Save</button><button onClick={publishDeck}>Publish</button><button onClick={exportPpt}>PPT</button></div>
+
           <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace ({allTemplates.length})</div>
           <input placeholder="Search templates..." value={templateSearch} onChange={(e) => { setTemplateSearch(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 10, padding: 10 }}>
-            <option value="All">All Categories</option>
-            <option value="Favorites">Favorites</option>
-            <option value="Custom">Custom</option>
-            {Object.keys(TEMPLATE_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 10, padding: 10 }}><option value="All">All</option><option value="Favorites">Favorites</option><option value="Custom">Custom</option>{Object.keys(TEMPLATE_CATEGORIES).map((c) => <option key={c}>{c}</option>)}</select>
           <div className="stack">{filteredTemplates.slice(0, templateLimit).map((t) => {
-            const key = t.id || t.name;
-            const fav = favorites.includes(key);
-            return (
-              <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
-                <button className="thumb" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span>{t.name}</span><small>{t.badge}</small></button>
-                <button title="favorite" onClick={() => toggleFavorite(key)}>{fav ? '★' : '☆'}</button>
-              </div>
-            );
+            const key = String(t.id || t.name); const fav = favorites.includes(key); const [icon, bg] = thumb(t.category);
+            return <div key={key} className="tpl-row"><button className="thumb tpl-card" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span className="tpl-preview" style={{ background: bg }}>{icon}</span><span>{t.name}<small>{t.badge}</small></span></button><button onClick={() => toggleFavorite(key)}>{fav ? '★' : '☆'}</button></div>;
           })}</div>
-          <small style={{ opacity: .8, display: 'block', marginTop: 6 }}>{filteredTemplates.length} matching templates · showing first {Math.min(templateLimit, filteredTemplates.length)}</small>
           {templateLimit < filteredTemplates.length && <button style={{ marginTop: 8, width: '100%' }} onClick={() => setTemplateLimit((n) => n + 60)}>Load 60 more</button>}
+
+          <div className="panel-title" style={{ marginTop: 16 }}>Favorite Board (Drag to reorder)</div>
+          <div className="fav-board">{favoriteTemplates.slice(0, 10).map((t) => {
+            const key = String(t.id || t.name); const [icon, bg] = thumb(t.category);
+            return <div key={key} className="fav-chip" draggable onDragStart={() => onDragStartFav(key)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDropFav(key)} style={{ background: bg }}>{icon} {t.name}</div>;
+          })}</div>
 
           <div className="panel-title" style={{ marginTop: 16 }}>Custom Template Builder</div>
           <input placeholder="Template name" value={customName} onChange={(e) => setCustomName(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <input placeholder="Category (e.g. FinTech, Healthcare)" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <textarea placeholder="Prompt used to generate this template..." value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={3} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <input placeholder="Category" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <textarea placeholder="Prompt..." value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={3} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
           <button onClick={addCustomTemplate}>Save Custom Template</button>
+
           <div className="panel-title" style={{ marginTop: 16 }}>My Decks</div>
           <div className="stack">{decks.map((d) => <button key={d.id} className="thumb" onClick={() => openDeck(d.id)}><span>{d.title}</span><small>{d.is_published ? `Published: ${d.slug}` : 'Draft'}</small></button>)}</div>
         </aside>
