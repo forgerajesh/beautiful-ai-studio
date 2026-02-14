@@ -137,7 +137,7 @@ app.get('/p/:slug', (req, res) => {
 });
 
 app.post('/api/ai/generate', auth, async (req, res) => {
-  const { prompt } = req.body || {};
+  const { prompt, tone = 'Corporate' } = req.body || {};
   if (!prompt) return res.status(400).json({ error: 'prompt required' });
 
   if (!LLM_API_KEY) {
@@ -164,7 +164,7 @@ app.post('/api/ai/generate', auth, async (req, res) => {
         model: LLM_MODEL,
         temperature: 0.6,
         messages: [
-          { role: 'system', content: `You are a world-class presentation designer. Generate executive-ready beautiful slides. ${schemaHint}` },
+          { role: 'system', content: `You are a world-class presentation designer. Generate executive-ready beautiful slides. Tone: ${tone}. ${schemaHint}` },
           { role: 'user', content: `Create a 6-slide deck from this prompt: ${prompt}` },
         ],
       }),
@@ -178,6 +178,47 @@ app.post('/api/ai/generate', auth, async (req, res) => {
     return res.json({ slides });
   } catch (e) {
     return res.status(500).json({ error: 'AI generation failed', detail: String(e) });
+  }
+});
+
+app.post('/api/ai/improve-slide', auth, async (req, res) => {
+  const { slide, tone = 'Corporate', objective = 'Improve clarity, storytelling, and visual impact' } = req.body || {};
+  if (!slide) return res.status(400).json({ error: 'slide required' });
+
+  if (!LLM_API_KEY) {
+    return res.status(400).json({
+      error: 'LLM_API_KEY missing on server',
+      fallback: true,
+      slide: { ...slide, notes: 'Fallback mode: add LLM_API_KEY to enable AI slide improvement.' },
+    });
+  }
+
+  const schemaHint = `Return ONLY valid JSON object with this exact shape: {"slide":{"layout":"Title|Two Column|Metrics|Timeline","title":"...","bullets":[...],"left":[...],"right":[...],"metrics":[{"label":"...","value":"..."}],"milestones":[...],"notes":"..."}}`;
+
+  try {
+    const r = await fetch(`${LLM_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${LLM_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: LLM_MODEL,
+        temperature: 0.5,
+        messages: [
+          { role: 'system', content: `You improve individual presentation slides. Tone: ${tone}. Objective: ${objective}. ${schemaHint}` },
+          { role: 'user', content: `Improve this slide JSON: ${JSON.stringify(slide)}` },
+        ],
+      }),
+    });
+
+    const data = await r.json();
+    const text = data?.choices?.[0]?.message?.content || '';
+    const cleaned = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return res.json({ slide: parsed.slide || slide });
+  } catch (e) {
+    return res.status(500).json({ error: 'AI slide improvement failed', detail: String(e) });
   }
 });
 

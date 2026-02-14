@@ -80,6 +80,7 @@ export default function App() {
   const [customPrompt, setCustomPrompt] = useState('');
   const [customTemplates, setCustomTemplates] = useState(() => JSON.parse(localStorage.getItem('bas_custom_templates') || '[]'));
   const [llmLoading, setLlmLoading] = useState(false);
+  const [tone, setTone] = useState('Corporate');
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
@@ -133,7 +134,7 @@ export default function App() {
     try {
       const r = await authedFetch(`${API}/ai/generate`, {
         method: 'POST',
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, tone }),
       });
       const d = await r.json();
       if (d?.slides?.length) {
@@ -148,6 +149,31 @@ export default function App() {
       const generated = makeSlidesFromPrompt(prompt);
       setSlides(generated);
       setActive(generated[0].id);
+    } finally {
+      setLlmLoading(false);
+    }
+  };
+
+  const improveSelectedSlide = async () => {
+    if (!token) return alert('Please login first');
+    const current = slides.find((s) => s.id === active);
+    if (!current) return;
+    setLlmLoading(true);
+    try {
+      const r = await authedFetch(`${API}/ai/improve-slide`, {
+        method: 'POST',
+        body: JSON.stringify({
+          tone,
+          objective: `Improve this slide for ${tone} presentation style with clear and concise storytelling`,
+          slide: { ...current, id: undefined },
+        }),
+      });
+      const d = await r.json();
+      if (d?.slide) {
+        setSlides((prev) => prev.map((s) => (s.id === active ? { ...d.slide, id: s.id } : s)));
+      }
+    } catch {
+      alert('Slide improvement failed');
     } finally {
       setLlmLoading(false);
     }
@@ -201,7 +227,17 @@ export default function App() {
       <header className="topbar">
         <div className="logo">Beautiful AI Studio</div>
         <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>{llmLoading ? 'Generating...' : 'Generate Beautiful Slides (LLM)'}</button></div>
-        <div className="top-actions"><input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} /><input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />{!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}</div>
+        <div className="top-actions">
+          <select value={tone} onChange={(e) => setTone(e.target.value)}>
+            <option>Corporate</option>
+            <option>Investor</option>
+            <option>Creative</option>
+            <option>Technical</option>
+          </select>
+          <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          {!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}
+        </div>
       </header>
 
       <div className="workspace">
@@ -252,6 +288,7 @@ export default function App() {
           <label>Title<input value={activeSlide?.title || ''} onChange={(e) => applyPatch({ title: e.target.value })} /></label>
           <label>Speaker Notes<textarea value={activeSlide?.notes || ''} onChange={(e) => applyPatch({ notes: e.target.value })} rows={5} /></label>
           <button onClick={exportJson}>Export JSON</button>
+          <button onClick={improveSelectedSlide}>{llmLoading ? 'Improving...' : `Improve Slide (${tone})`}</button>
           <div className="health"><span>Deck Completeness</span><div className="bar"><i style={{ width: `${progress}%` }} /></div></div>
         </aside>
       </div>
