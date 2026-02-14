@@ -9,6 +9,7 @@ const { authenticate, login } = require('./auth');
 const { requireRole } = require('./rbac');
 const { computeBoardMetrics, diffBoards, safeParse } = require('./metrics');
 const { pushToJira, pullFromJira, getSyncHealth, JIRA_MOCK_MODE } = require('./jira');
+const { createWave3Router } = require('./wave3');
 
 const app = express();
 app.use(cors());
@@ -189,6 +190,8 @@ app.get('/api/v2/dashboard/board/:id', async (req, res) => {
 
   res.json({ boardId: Number(req.params.id), metrics, riskTrend, workflowState: board.workflow_state, updatedAt: board.updated_at });
 });
+
+app.use('/api/v3', createWave3Router({ broadcastBoard }));
 
 app.use(express.static(path.join(__dirname, '..')));
 
