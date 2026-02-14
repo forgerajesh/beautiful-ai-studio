@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Architecture Builder</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>QA Architecture Builder</h1>
+    <div>
+      <button id="newBoard">New Board</button>
+      <button id="exportJson">Export JSON</button>
+      <button id="importJsonBtn">Import JSON</button>
+      <input id="importJson" type="file" accept="application/json" hidden />
+    </div>
+  </header>
+
+  <main>
+    <aside class="palette" id="palette">
+      <h3>Drag Components</h3>
+      <div class="item" draggable="true" data-type="Requirements">Requirements</div>
+      <div class="item" draggable="true" data-type="Test Strategy">Test Strategy</div>
+      <div class="item" draggable="true" data-type="Test Cases">Test Cases</div>
+      <div class="item" draggable="true" data-type="Test Data">Test Data</div>
+      <div class="item" draggable="true" data-type="API Testing">API Testing</div>
+      <div class="item" draggable="true" data-type="UI Testing">UI Testing</div>
+      <div class="item" draggable="true" data-type="Performance">Performance</div>
+      <div class="item" draggable="true" data-type="Security">Security</div>
+      <div class="item" draggable="true" data-type="Accessibility">Accessibility</div>
+      <div class="item" draggable="true" data-type="Automation Framework">Automation Framework</div>
+      <div class="item" draggable="true" data-type="CI/CD">CI/CD</div>
+      <div class="item" draggable="true" data-type="Defect Tracking">Defect Tracking</div>
+      <div class="item" draggable="true" data-type="Reporting Dashboard">Reporting Dashboard</div>
+      <div class="item" draggable="true" data-type="Release Gate">Release Gate</div>
+    </aside>
+
+    <section class="canvas-wrap">
+      <div class="toolbar">
+        <span>Tip: Drag blocks, click two blocks to connect, double-click block to edit text</span>
+      </div>
+      <div id="canvas" class="canvas"></div>
+    </section>
+
+    <aside class="inspector">
+      <h3>Architecture Quality Matrix</h3>
+      <ul id="qualityMatrix"></ul>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
