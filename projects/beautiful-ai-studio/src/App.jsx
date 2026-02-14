@@ -67,6 +67,12 @@ export default function App() {
   const [decks, setDecks] = useState([]);
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateCategory, setTemplateCategory] = useState('All');
+  const [templateLimit, setTemplateLimit] = useState(60);
+  const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('bas_favorites') || '[]'));
+  const [customName, setCustomName] = useState('');
+  const [customCategory, setCustomCategory] = useState('Custom');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [customTemplates, setCustomTemplates] = useState(() => JSON.parse(localStorage.getItem('bas_custom_templates') || '[]'));
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
@@ -169,14 +175,44 @@ export default function App() {
     await pptx.writeFile({ fileName: 'beautiful-ai-studio-deck.pptx' });
   };
 
+  const allTemplates = useMemo(() => [...customTemplates, ...TEMPLATES], [customTemplates]);
+
   const filteredTemplates = useMemo(() => {
     const q = templateSearch.trim().toLowerCase();
-    return TEMPLATES.filter((t) => {
-      const catOk = templateCategory === 'All' || t.category === templateCategory;
+    const source = templateCategory === 'Favorites'
+      ? allTemplates.filter((t) => favorites.includes(t.id || t.name))
+      : allTemplates;
+    return source.filter((t) => {
+      const catOk = templateCategory === 'All' || templateCategory === 'Favorites' || t.category === templateCategory;
       const qOk = !q || t.name.toLowerCase().includes(q) || t.prompt.toLowerCase().includes(q);
       return catOk && qOk;
     });
-  }, [templateSearch, templateCategory]);
+  }, [templateSearch, templateCategory, allTemplates, favorites]);
+
+  const toggleFavorite = (templateKey) => {
+    setFavorites((prev) => {
+      const next = prev.includes(templateKey) ? prev.filter((x) => x !== templateKey) : [...prev, templateKey];
+      localStorage.setItem('bas_favorites', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const addCustomTemplate = () => {
+    if (!customName.trim() || !customPrompt.trim()) return;
+    const t = {
+      id: `custom-${Date.now()}`,
+      name: customName.trim(),
+      category: customCategory.trim() || 'Custom',
+      prompt: customPrompt.trim(),
+      badge: 'Custom',
+    };
+    const next = [t, ...customTemplates];
+    setCustomTemplates(next);
+    localStorage.setItem('bas_custom_templates', JSON.stringify(next));
+    setCustomName('');
+    setCustomPrompt('');
+    setTemplateCategory('All');
+  };
 
   const progress = useMemo(() => Math.min(100, Math.round((slides.length / 10) * 100)), [slides.length]);
 
@@ -208,14 +244,32 @@ export default function App() {
           </div>
           <div className="row"><button onClick={() => addSlide()}>+ Slide</button><button onClick={duplicateSlide}>Duplicate</button><button onClick={removeSlide}>Delete</button></div>
           <div className="row" style={{ marginTop: 8 }}><button onClick={saveDeck}>Save</button><button onClick={publishDeck}>Publish</button><button onClick={exportPpt}>PPT</button></div>
-          <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace ({TEMPLATES.length})</div>
-          <input placeholder="Search templates..." value={templateSearch} onChange={(e) => setTemplateSearch(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <select value={templateCategory} onChange={(e) => setTemplateCategory(e.target.value)} style={{ width: '100%', marginBottom: 10, padding: 10 }}>
+          <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace ({allTemplates.length})</div>
+          <input placeholder="Search templates..." value={templateSearch} onChange={(e) => { setTemplateSearch(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 10, padding: 10 }}>
             <option value="All">All Categories</option>
+            <option value="Favorites">Favorites</option>
+            <option value="Custom">Custom</option>
             {Object.keys(TEMPLATE_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <div className="stack">{filteredTemplates.slice(0, 60).map((t) => <button key={t.id} className="thumb" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span>{t.name}</span><small>{t.badge}</small></button>)}</div>
-          <small style={{ opacity: .8, display: 'block', marginTop: 6 }}>{filteredTemplates.length} matching templates · showing first 60</small>
+          <div className="stack">{filteredTemplates.slice(0, templateLimit).map((t) => {
+            const key = t.id || t.name;
+            const fav = favorites.includes(key);
+            return (
+              <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
+                <button className="thumb" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span>{t.name}</span><small>{t.badge}</small></button>
+                <button title="favorite" onClick={() => toggleFavorite(key)}>{fav ? '★' : '☆'}</button>
+              </div>
+            );
+          })}</div>
+          <small style={{ opacity: .8, display: 'block', marginTop: 6 }}>{filteredTemplates.length} matching templates · showing first {Math.min(templateLimit, filteredTemplates.length)}</small>
+          {templateLimit < filteredTemplates.length && <button style={{ marginTop: 8, width: '100%' }} onClick={() => setTemplateLimit((n) => n + 60)}>Load 60 more</button>}
+
+          <div className="panel-title" style={{ marginTop: 16 }}>Custom Template Builder</div>
+          <input placeholder="Template name" value={customName} onChange={(e) => setCustomName(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <input placeholder="Category (e.g. FinTech, Healthcare)" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <textarea placeholder="Prompt used to generate this template..." value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={3} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
+          <button onClick={addCustomTemplate}>Save Custom Template</button>
           <div className="panel-title" style={{ marginTop: 16 }}>My Decks</div>
           <div className="stack">{decks.map((d) => <button key={d.id} className="thumb" onClick={() => openDeck(d.id)}><span>{d.title}</span><small>{d.is_published ? `Published: ${d.slug}` : 'Draft'}</small></button>)}</div>
         </aside>
