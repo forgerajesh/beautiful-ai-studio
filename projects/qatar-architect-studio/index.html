@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qatar Architect Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Qatar Architect Studio</h1>
+      <p>Architecture workflow hub with template packs and full-spectrum testing matrix</p>
+    </div>
+    <button id="exportPlan">Export Project Plan JSON</button>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h2>Project Setup</h2>
+      <label>Project Name <input id="projectName" value="Doha Mixed-Use Tower" /></label>
+      <label>Project Type
+        <select id="projectType">
+          <option>High-Rise Residential</option>
+          <option>Commercial Complex</option>
+          <option>Hospitality / Hotel</option>
+          <option>Public Infrastructure</option>
+          <option>Retail + Lifestyle</option>
+        </select>
+      </label>
+      <label>Site Location <input id="siteLocation" value="West Bay, Doha" /></label>
+      <label>Primary Standard
+        <select id="standard">
+          <option>QCS 2014</option>
+          <option>Qatar Civil Defense</option>
+          <option>Ashghal Building Requirements</option>
+          <option>GSAS Sustainability</option>
+        </select>
+      </label>
+      <button id="createPlan">Generate Execution Plan</button>
+
+      <h2>Template Library</h2>
+      <div id="templates" class="list"></div>
+    </aside>
+
+    <section class="content">
+      <div class="grid two">
+        <article class="card">
+          <h3>Sample Template Preview</h3>
+          <pre id="templatePreview">Select a template to preview structure...</pre>
+        </article>
+        <article class="card">
+          <h3>Generated Execution Plan</h3>
+          <pre id="executionPlan">Click "Generate Execution Plan"</pre>
+        </article>
+      </div>
+
+      <article class="card">
+        <h3>Testing Types Coverage</h3>
+        <table>
+          <thead>
+            <tr><th>Testing Type</th><th>Scope</th><th>Status</th></tr>
+          </thead>
+          <tbody id="testingRows"></tbody>
+        </table>
+      </article>
+
+      <article class="card">
+        <h3>Quality Gates & Checklists</h3>
+        <div id="qualityGates" class="chips"></div>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
