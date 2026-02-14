@@ -656,6 +656,138 @@ document.getElementById('exportBlueprintPack').onclick = () => {
   blueprintSummary.textContent = `Blueprint exported with ${state.nodes.length} nodes, ${state.links.length} links, anti-patterns: ${detectAntiPatterns().length}.`;
 };
 
+// v2 enterprise integration panel (optional; degrades gracefully)
+const v2 = {
+  token: null,
+  boardId: null,
+  ws: null,
+};
+
+const v2Status = document.getElementById('v2Status');
+const v2Dashboard = document.getElementById('v2Dashboard');
+const v2Presence = document.getElementById('v2Presence');
+
+async function v2Api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (v2.token) headers.Authorization = `Bearer ${v2.token}`;
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+async function v2EnsureBoard() {
+  if (v2.boardId) return v2.boardId;
+  const created = await v2Api('/api/v2/boards', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: `QA Board ${new Date().toISOString().slice(0, 10)}`,
+      description: 'Enterprise v2 board snapshot',
+      data: state,
+    }),
+  });
+  v2.boardId = created.id;
+  return v2.boardId;
+}
+
+function connectV2Ws(boardId) {
+  if (v2.ws) v2.ws.close();
+  const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${wsProtocol}://${location.host}/ws/v2`);
+  v2.ws = ws;
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'join', boardId, user: 'architect-ui' }));
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'presence') {
+      v2Presence.textContent = `Presence (${msg.users.length}): ${msg.users.join(', ')}`;
+    }
+    if (msg.type === 'board:update' && msg.by !== 'architect-ui' && msg.data) {
+      state = msg.data;
+      render();
+      renderEffort();
+      validateArchitecture();
+      strategyOutput.textContent = generateStrategyText();
+    }
+  };
+}
+
+document.getElementById('v2LoginBtn')?.addEventListener('click', async () => {
+  try {
+    const auth = await v2Api('/api/v2/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username: 'architect', password: 'architect' }),
+    });
+    v2.token = auth.token;
+    v2Status.textContent = `v2 login success as ${auth.user.username} (${auth.user.role})`;
+  } catch (e) {
+    v2Status.textContent = `v2 login failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v2SaveBoardBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    await v2Api(`/api/v2/boards/${boardId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ data: state, summary: 'UI save snapshot' }),
+    });
+    v2Status.textContent = `Board ${boardId} saved with ${state.nodes.length} nodes.`;
+
+    if (v2.ws?.readyState !== WebSocket.OPEN) connectV2Ws(boardId);
+    if (v2.ws?.readyState === WebSocket.OPEN) {
+      v2.ws.send(JSON.stringify({ type: 'board:update', data: state }));
+    }
+  } catch (e) {
+    v2Status.textContent = `Save failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v2LoadDashboardBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    const dash = await v2Api(`/api/v2/dashboard/board/${boardId}`);
+    v2Dashboard.textContent = [
+      `Board: ${dash.boardId}`,
+      `Completeness: ${dash.metrics.architectureCompleteness}%`,
+      `Automation readiness: ${dash.metrics.automationReadiness}%`,
+      `Release readiness: ${dash.metrics.releaseReadiness}%`,
+      `Risk score: ${dash.metrics.currentRiskScore}`,
+      `Workflow: ${dash.workflowState}`,
+      '',
+      'Risk trend (last versions):',
+      ...dash.riskTrend.map((r) => `- v${r.version}: ${r.risk}`),
+    ].join('\n');
+  } catch (e) {
+    v2Dashboard.textContent = `Dashboard load failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v2JiraPushBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    const result = await v2Api(`/api/v2/integrations/jira/push/${boardId}`, { method: 'POST' });
+    v2Status.textContent = `Jira push: ${result.message || 'ok'} (${result.mocked ? 'mock' : 'stub'})`;
+  } catch (e) {
+    v2Status.textContent = `Jira push failed: ${e.message}`;
+  }
+});
+
+document.getElementById('v2JiraPullBtn')?.addEventListener('click', async () => {
+  try {
+    const boardId = await v2EnsureBoard();
+    const result = await v2Api(`/api/v2/integrations/jira/pull/${boardId}`, { method: 'POST' });
+    v2Status.textContent = `Jira pull: ${result.message || 'ok'} (${result.mocked ? 'mock' : 'stub'})`;
+  } catch (e) {
+    v2Status.textContent = `Jira pull failed: ${e.message}`;
+  }
+});
+
 // seed board from first reference template
 state = templateToState(referenceTemplates[0]);
 
