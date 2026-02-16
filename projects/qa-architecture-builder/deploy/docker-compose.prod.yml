@@ -1,7 +1,9 @@
 version: '3.9'
 services:
   qa-architecture-builder:
-    build: .
+    build:
+      context: ..
+      dockerfile: Dockerfile
     container_name: qa-architecture-builder
     restart: unless-stopped
     environment:
