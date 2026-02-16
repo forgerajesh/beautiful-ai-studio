@@ -68,9 +68,15 @@
       <div class="item" draggable="true" data-type="Release Gate">Release Gate</div>
     </aside>
 
+    <div class="splitter" id="leftSplitter" title="Drag to resize panels"></div>
+
     <section class="canvas-wrap">
       <div class="toolbar">
         <span>Tip: Drag blocks, click two blocks to connect, double-click block to edit text</span>
+        <div class="window-actions">
+          <button id="resetWindowsBtn">Reset Windows</button>
+          <button id="focusCanvasBtn">Focus Canvas</button>
+        </div>
         <div>
           <button id="undoBtn">Undo</button>
           <button id="redoBtn">Redo</button>
@@ -80,6 +86,8 @@
       </div>
       <div id="canvas" class="canvas"></div>
     </section>
+
+    <div class="splitter" id="rightSplitter" title="Drag to resize panels"></div>
 
     <aside class="inspector">
       <h3>Architecture Quality Matrix</h3>

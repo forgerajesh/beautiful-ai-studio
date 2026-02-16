@@ -994,3 +994,50 @@ validateArchitecture();
 simulationOutput.textContent = 'Run simulation to see projected QA health.';
 blueprintSummary.textContent = 'Export full blueprint pack for governance, planning, and audit review.';
 aiOutput.textContent = runAICopilotAnalysis('risk');
+
+// Adjustable windows (palette/canvas/inspector)
+(function initAdjustableWindows() {
+  const main = document.querySelector('main');
+  const leftSplitter = document.getElementById('leftSplitter');
+  const rightSplitter = document.getElementById('rightSplitter');
+  const resetBtn = document.getElementById('resetWindowsBtn');
+  const focusCanvasBtn = document.getElementById('focusCanvasBtn');
+  if (!main || !leftSplitter || !rightSplitter) return;
+
+  const setLeft = (v) => main.style.setProperty('--left', `${Math.min(420, Math.max(180, v))}px`);
+  const setRight = (v) => main.style.setProperty('--right', `${Math.min(520, Math.max(240, v))}px`);
+
+  const bindDrag = (el, onMove) => {
+    el.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const move = (ev) => onMove(ev);
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  };
+
+  bindDrag(leftSplitter, (ev) => {
+    const rect = main.getBoundingClientRect();
+    setLeft(ev.clientX - rect.left);
+  });
+
+  bindDrag(rightSplitter, (ev) => {
+    const rect = main.getBoundingClientRect();
+    const fromRight = rect.right - ev.clientX;
+    setRight(fromRight);
+  });
+
+  resetBtn?.addEventListener('click', () => {
+    setLeft(240);
+    setRight(320);
+  });
+
+  focusCanvasBtn?.addEventListener('click', () => {
+    setLeft(200);
+    setRight(260);
+  });
+})();
