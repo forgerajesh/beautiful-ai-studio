@@ -82,6 +82,10 @@ export default function App() {
   const [customTemplates, setCustomTemplates] = useState(() => JSON.parse(localStorage.getItem('bas_custom_templates') || '[]'));
   const [llmLoading, setLlmLoading] = useState(false);
   const [tone, setTone] = useState('Corporate');
+  const [brandPrimary, setBrandPrimary] = useState(localStorage.getItem('bas_brand_primary') || '#7c5cff');
+  const [brandFont, setBrandFont] = useState(localStorage.getItem('bas_brand_font') || 'Inter, Arial');
+  const [brandLogo, setBrandLogo] = useState(localStorage.getItem('bas_brand_logo') || '');
+  const [versionHistory, setVersionHistory] = useState(() => JSON.parse(localStorage.getItem('bas_versions') || '[]'));
 
   const theme = THEMES[themeName];
   const activeSlide = slides.find((s) => s.id === active) || slides[0];
@@ -111,6 +115,28 @@ export default function App() {
       .then((d) => setDecks(d.decks || []))
       .catch(() => {});
   }, [token]);
+
+  useEffect(() => {
+    localStorage.setItem('bas_brand_primary', brandPrimary);
+    localStorage.setItem('bas_brand_font', brandFont);
+    localStorage.setItem('bas_brand_logo', brandLogo);
+  }, [brandPrimary, brandFont, brandLogo]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const snap = {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        title: deckTitle || 'Untitled Deck',
+        themeName,
+        slides,
+      };
+      const next = [snap, ...versionHistory].slice(0, 20);
+      setVersionHistory(next);
+      localStorage.setItem('bas_versions', JSON.stringify(next));
+    }, 600);
+    return () => clearTimeout(t);
+  }, [slides, deckTitle, themeName]);
 
   const register = async () => { const r = await fetch(`${API}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name: email.split('@')[0] }) }); const d = await r.json(); d.token ? (localStorage.setItem('bas_token', d.token), setToken(d.token)) : alert(d.error || 'Register failed'); };
   const login = async () => { const r = await fetch(`${API}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }); const d = await r.json(); d.token ? (localStorage.setItem('bas_token', d.token), setToken(d.token)) : alert(d.error || 'Login failed'); };
@@ -186,6 +212,15 @@ export default function App() {
 
   const exportJson = () => { const blob = new Blob([JSON.stringify({ theme: themeName, slides }, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'beautiful-ai-studio-deck.json'; link.click(); };
   const exportPpt = async () => { const p = new pptxgen(); p.layout = 'LAYOUT_WIDE'; slides.forEach((s) => { const sl = p.addSlide(); sl.background = { color: themeName === 'Snow' ? 'FFFFFF' : '0F172A' }; sl.addText(s.title || '', { x: 0.6, y: 0.4, w: 12, h: 0.7, fontSize: 30, bold: true, color: themeName === 'Snow' ? '111827' : 'F8FAFC' }); if (s.layout === 'Two Column') { (s.left || []).forEach((b, i) => sl.addText(`• ${b}`, { x: 0.7, y: 1.3 + i * 0.45, w: 5.7, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' })); (s.right || []).forEach((b, i) => sl.addText(`• ${b}`, { x: 6.8, y: 1.3 + i * 0.45, w: 5.7, h: 0.35, fontSize: 16, color: themeName === 'Snow' ? '374151' : 'CBD5E1' })); } else if (s.layout === 'Metrics') { (s.metrics || []).forEach((m, i) => { const x = 0.8 + i * 4; sl.addShape(p.ShapeType.roundRect, { x, y: 2.1, w: 3.4, h: 2.1, fill: { color: '1D4ED8' }, line: { color: '1D4ED8' }, rectRadius: 0.08 }); sl.addText(m.value || '', { x: x + 0.2, y: 2.6, w: 3, h: 0.7, fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' }); sl.addText(m.label || '', { x: x + 0.2, y: 3.4, w: 3, h: 0.4, fontSize: 15, color: 'DBEAFE', align: 'center' }); }); } else if (s.layout === 'Timeline') { (s.milestones || []).forEach((m, i) => { sl.addShape(p.ShapeType.ellipse, { x: 0.9, y: 1.4 + i * 1.1, w: 0.35, h: 0.35, fill: { color: '14B8A6' }, line: { color: '14B8A6' } }); sl.addText(m, { x: 1.4, y: 1.35 + i * 1.1, w: 10.8, h: 0.5, fontSize: 17, color: themeName === 'Snow' ? '374151' : 'CBD5E1' }); }); } else { (s.bullets || []).forEach((b, i) => sl.addText(`• ${b}`, { x: 0.9, y: 1.6 + i * 0.5, w: 11, h: 0.4, fontSize: 20, color: themeName === 'Snow' ? '374151' : 'CBD5E1' })); } }); await p.writeFile({ fileName: 'beautiful-ai-studio-deck.pptx' }); };
+  const exportPdf = () => window.print();
+  const restoreVersion = (id) => {
+    const snap = versionHistory.find((v) => v.id === id);
+    if (!snap) return;
+    setDeckTitle(snap.title || 'Restored Deck');
+    setThemeName(snap.themeName || 'Nebula');
+    setSlides(snap.slides || seedSlides);
+    setActive((snap.slides && snap.slides[0]?.id) || seedSlides[0].id);
+  };
 
   const toggleFavorite = (k) => setFavorites((prev) => { const key = String(k); const next = prev.includes(key) ? prev.filter((x) => x !== key) : [...prev, key]; localStorage.setItem('bas_favorites', JSON.stringify(next)); return next; });
   const addCustomTemplate = () => {
@@ -224,7 +259,7 @@ export default function App() {
   }
 
   return (
-    <div className="app" style={{ '--bg': theme.bg, '--card': theme.card, '--text': theme.text, '--accent': theme.accent }}>
+    <div className="app" style={{ '--bg': theme.bg, '--card': theme.card, '--text': theme.text, '--accent': brandPrimary || theme.accent, fontFamily: brandFont }}>
       <header className="topbar">
         <div className="logo">{APP_NAME}</div>
         <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>{llmLoading ? 'Generating...' : 'Generate Smart Slides (LLM)'}</button></div>
@@ -288,7 +323,22 @@ export default function App() {
           <label>Layout<select value={activeSlide?.layout || 'Title'} onChange={(e) => applyPatch({ layout: e.target.value })}>{LAYOUTS.map((l) => <option key={l}>{l}</option>)}</select></label>
           <label>Title<input value={activeSlide?.title || ''} onChange={(e) => applyPatch({ title: e.target.value })} /></label>
           <label>Speaker Notes<textarea value={activeSlide?.notes || ''} onChange={(e) => applyPatch({ notes: e.target.value })} rows={5} /></label>
+
+          <div className="panel-title" style={{ marginTop: 12 }}>Brand Kit</div>
+          <label>Brand Primary Color<input type="color" value={brandPrimary} onChange={(e) => setBrandPrimary(e.target.value)} /></label>
+          <label>Brand Font<input value={brandFont} onChange={(e) => setBrandFont(e.target.value)} placeholder="Inter, Arial" /></label>
+          <label>Brand Logo URL<input value={brandLogo} onChange={(e) => setBrandLogo(e.target.value)} placeholder="https://..." /></label>
+          {brandLogo ? <img src={brandLogo} alt="Brand logo" style={{ maxHeight: 48, marginBottom: 8, borderRadius: 6 }} /> : null}
+
+          <div className="panel-title" style={{ marginTop: 12 }}>Version History</div>
+          <select onChange={(e) => e.target.value && restoreVersion(e.target.value)} defaultValue="" style={{ width: '100%', marginBottom: 8 }}>
+            <option value="">Restore snapshot...</option>
+            {versionHistory.slice(0, 10).map((v) => <option key={v.id} value={v.id}>{new Date(v.at).toLocaleString()} — {v.title}</option>)}
+          </select>
+
           <button onClick={exportJson}>Export JSON</button>
+          <button onClick={exportPpt}>Export PPT</button>
+          <button onClick={exportPdf}>Export PDF</button>
           <button onClick={improveSelectedSlide}>{llmLoading ? 'Improving...' : `Improve Slide (${tone})`}</button>
           <div className="health"><span>Deck Completeness</span><div className="bar"><i style={{ width: `${progress}%` }} /></div></div>
         </aside>
