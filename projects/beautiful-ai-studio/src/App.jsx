@@ -9,29 +9,6 @@ const THEMES = {
   Aurora: { bg: '#071b22', card: '#0d2a33', text: '#ecffff', accent: '#06b6d4' },
 };
 const LAYOUTS = ['Title', 'Two Column', 'Metrics', 'Timeline'];
-const TEMPLATE_CATEGORIES = {
-  Startup: ['Pitch Deck', 'Fundraising Story', 'Product Vision', 'GTM Plan', 'Launch Plan'],
-  Enterprise: ['QBR', 'Transformation Plan', 'Executive Update', 'Strategy Review', 'Operating Model'],
-  Marketing: ['Campaign Plan', 'Brand Story', 'Content Strategy', 'Social Plan', 'SEO Plan'],
-  Sales: ['Client Proposal', 'Solution Demo', 'Account Plan', 'Value Story', 'Renewal Plan'],
-  Education: ['Course Outline', 'Workshop Deck', 'Training Program', 'Bootcamp Intro', 'Certification Prep'],
-  Product: ['Roadmap', 'Feature Proposal', 'Discovery Insights', 'User Journey', 'Experiment Plan'],
-  Technology: ['Architecture Review', 'Migration Plan', 'Security Strategy', 'DevOps Plan', 'AI Adoption Plan'],
-  Consulting: ['Assessment Report', 'Diagnostic Summary', 'Engagement Plan', 'Transformation Blueprint', 'Maturity Model'],
-  HR: ['Hiring Plan', 'Onboarding Program', 'Culture Deck', 'Performance Framework', 'Org Design'],
-  Finance: ['Budget Review', 'Investment Brief', 'Board Pack', 'Revenue Plan', 'Cost Optimization'],
-};
-
-const TEMPLATES = (() => {
-  const out = [];
-  let i = 1;
-  Object.entries(TEMPLATE_CATEGORIES).forEach(([cat, patterns]) => {
-    for (let n = 1; n <= 25; n += 1) {
-      patterns.forEach((p) => out.push({ id: i++, name: `${cat} ${p} ${n}`, category: cat, prompt: `Create a ${cat.toLowerCase()} ${p.toLowerCase()} presentation with executive storytelling, clear visuals, and action-oriented slides.`, badge: cat }));
-    }
-  });
-  return out;
-})();
 
 const PROMPT_PRESETS = [
   {
@@ -84,15 +61,7 @@ const makeSlidesFromPrompt = (prompt) => {
   ];
 };
 
-const thumb = (cat) => {
-  const map = {
-    Startup: ['🚀', 'linear-gradient(135deg,#1d4ed8,#7c3aed)'], Enterprise: ['🏢', 'linear-gradient(135deg,#0f766e,#2563eb)'], Marketing: ['📣', 'linear-gradient(135deg,#d946ef,#ec4899)'],
-    Sales: ['💼', 'linear-gradient(135deg,#f59e0b,#ef4444)'], Education: ['🎓', 'linear-gradient(135deg,#0ea5e9,#22c55e)'], Product: ['🧩', 'linear-gradient(135deg,#8b5cf6,#3b82f6)'],
-    Technology: ['⚙️', 'linear-gradient(135deg,#334155,#2563eb)'], Consulting: ['📊', 'linear-gradient(135deg,#0f766e,#14b8a6)'], HR: ['👥', 'linear-gradient(135deg,#7c3aed,#ec4899)'],
-    Finance: ['💹', 'linear-gradient(135deg,#14532d,#16a34a)'], Custom: ['✨', 'linear-gradient(135deg,#0f172a,#475569)'],
-  };
-  return map[cat] || ['📄', 'linear-gradient(135deg,#1f2937,#4b5563)'];
-};
+// template utilities removed
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true);
@@ -308,13 +277,13 @@ export default function App() {
       <div className="landing">
         <div className="landing-hero">
           <h1>{APP_NAME}</h1>
-          <p>Create stunning presentations with AI, 1250+ templates, publishing, and SaaS collaboration workflows.</p>
+          <p>Create stunning presentations with AI prompt builder, brand kit, version history, and one-click export/publish.</p>
           <div className="landing-actions"><button className="primary" onClick={() => setShowLanding(false)}>Enter Studio</button></div>
         </div>
         <div className="landing-grid">
-          <div className="landing-card"><h3>1250+ Formats</h3><p>Category-based template library with smart search.</p></div>
-          <div className="landing-card"><h3>Drag & Drop Favorites</h3><p>Reorder your top templates for rapid creation.</p></div>
-          <div className="landing-card"><h3>Publish & Share</h3><p>One-click public links for final decks.</p></div>
+          <div className="landing-card"><h3>Prompt Builder</h3><p>Generate deck structure with audience, goal, and constraints.</p></div>
+          <div className="landing-card"><h3>Brand + Versions</h3><p>Apply brand styling and restore previous versions anytime.</p></div>
+          <div className="landing-card"><h3>Publish & Export</h3><p>Share public link and export to PPT/PDF quickly.</p></div>
         </div>
       </div>
     );
@@ -326,7 +295,7 @@ export default function App() {
         <div className="logo">{APP_NAME}</div>
         <div className="prompt-wrap">
           <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation topic..." />
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="prompt-actions">
             <button className="primary" onClick={() => generateDeck('v1')}>{llmLoading ? 'Generating...' : 'Generate'}</button>
             <button className="primary" onClick={() => generateDeck('v2')}>{llmLoading ? 'Generating...' : 'Generate v2 (Structured)'}</button>
           </div>
