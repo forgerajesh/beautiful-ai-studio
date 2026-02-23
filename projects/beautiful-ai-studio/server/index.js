@@ -160,7 +160,7 @@ function readTextSafe(filePath, max = 3000) {
 }
 
 app.post('/api/qa/autodeck', auth, (req, res) => {
-  const { projectPath = 'projects/testops-platform', title = 'QA/TestOps Weekly Executive Update' } = req.body || {};
+  const { projectPath = 'projects/testops-platform', title = 'QA/TestOps Weekly Executive Update', jiraData = null, testReport = null } = req.body || {};
   const baseWorkspace = path.resolve(APP_ROOT, '..');
   const requested = path.resolve(baseWorkspace, projectPath);
   if (!requested.startsWith(baseWorkspace)) return res.status(400).json({ error: 'Invalid project path' });
@@ -173,26 +173,40 @@ app.post('/api/qa/autodeck', auth, (req, res) => {
 
   let passRate = 'n/a';
   let failures = 'n/a';
-  if (reportRaw) {
+  let totalTests = 0;
+  let openJira = 0;
+  let doneJira = 0;
+
+  const parsedReport = testReport || (() => { try { return reportRaw ? JSON.parse(reportRaw) : null; } catch { return null; } })();
+  if (parsedReport) {
     try {
-      const j = JSON.parse(reportRaw);
-      const passed = Number(j.passed ?? j.summary?.passed ?? 0);
-      const failed = Number(j.failed ?? j.summary?.failed ?? 0);
-      const total = Number(j.total ?? j.summary?.total ?? (passed + failed));
+      const passed = Number(parsedReport.passed ?? parsedReport.summary?.passed ?? 0);
+      const failed = Number(parsedReport.failed ?? parsedReport.summary?.failed ?? 0);
+      const total = Number(parsedReport.total ?? parsedReport.summary?.total ?? (passed + failed));
+      totalTests = total;
       passRate = total > 0 ? `${Math.round((passed / total) * 100)}%` : 'n/a';
       failures = `${failed}`;
     } catch {}
   }
 
+  if (jiraData) {
+    try {
+      const issues = jiraData.issues || jiraData.items || [];
+      openJira = issues.filter((i) => !['Done', 'Closed', 'Resolved'].includes(String(i.status?.name || i.status || '').trim())).length;
+      doneJira = issues.length - openJira;
+    } catch {}
+  }
+
   const slides = [
-    { id: `qa-${Date.now()}-1`, layout: 'Title', title, bullets: ['Auto-generated from project artifacts', `Project: ${projectPath}`, `Generated: ${new Date().toISOString()}`], notes: '' },
-    { id: `qa-${Date.now()}-2`, layout: 'Two Column', title: 'Project Snapshot', left: ['Source files scanned', 'README/ARCH/OPS/DELIVERY analyzed', 'Evidence-first summary'], right: [readme.slice(0, 140) || 'README not found', arch.slice(0, 140) || 'ARCH not found', delivery.slice(0, 140) || 'Delivery note not found'], notes: '' },
-    { id: `qa-${Date.now()}-3`, layout: 'Metrics', title: 'Quality Signals', metrics: [{ label: 'Pass Rate', value: passRate }, { label: 'Failures', value: failures }, { label: 'Artifacts', value: '4+' }], notes: '' },
-    { id: `qa-${Date.now()}-4`, layout: 'Two Column', title: 'Operations & Risks', left: ['Current operating model', ops.slice(0, 110) || 'OPS summary unavailable', 'Automation execution status'], right: ['Top risks', 'Relay / infra dependency', 'Mitigation: retries + SOP + health checks'], notes: '' },
-    { id: `qa-${Date.now()}-5`, layout: 'Timeline', title: 'Next Sprint Actions', milestones: ['Stabilize execution reliability', 'Improve reporting depth and trend charts', 'Expand reusable enterprise templates', 'Finalize stakeholder-ready weekly deck automation'], notes: '' },
+    { id: `qa-${Date.now()}-1`, layout: 'Title', title, bullets: ['Auto-generated from project + Jira + test report ingestion', `Project: ${projectPath}`, `Generated: ${new Date().toISOString()}`], notes: '' },
+    { id: `qa-${Date.now()}-2`, layout: 'Two Column', title: 'Program Snapshot', left: ['Source files scanned', 'README/ARCH/OPS/DELIVERY analyzed', 'Evidence-first summary'], right: [readme.slice(0, 140) || 'README not found', arch.slice(0, 140) || 'ARCH not found', delivery.slice(0, 140) || 'Delivery note not found'], notes: '' },
+    { id: `qa-${Date.now()}-3`, layout: 'Metrics', title: 'Quality & Delivery Metrics', metrics: [{ label: 'Pass Rate', value: passRate }, { label: 'Failures', value: failures }, { label: 'Total Tests', value: `${totalTests || 'n/a'}` }], notes: '' },
+    { id: `qa-${Date.now()}-4`, layout: 'Metrics', title: 'Jira Delivery Signals', metrics: [{ label: 'Open Issues', value: `${openJira}` }, { label: 'Done Issues', value: `${doneJira}` }, { label: 'Ingestion', value: jiraData ? 'Jira+Tests' : 'Project-only' }], notes: '' },
+    { id: `qa-${Date.now()}-5`, layout: 'Two Column', title: 'Operations & Risks', left: ['Current operating model', ops.slice(0, 110) || 'OPS summary unavailable', 'Automation execution status'], right: ['Top risks', 'Relay / infra dependency', 'Mitigation: retries + SOP + health checks'], notes: '' },
+    { id: `qa-${Date.now()}-6`, layout: 'Timeline', title: 'Next Sprint Actions', milestones: ['Stabilize execution reliability', 'Close high-priority open Jira items', 'Improve report trend visibility', 'Publish weekly leadership auto-deck'], notes: '' },
   ];
 
-  return res.json({ slides, deckTitle: title, sourcePath: projectPath, host: os.hostname() });
+  return res.json({ slides, deckTitle: title, sourcePath: projectPath, host: os.hostname(), ingestion: { jira: !!jiraData, testReport: !!parsedReport } });
 });
 
 app.post('/api/ai/generate', auth, async (req, res) => {

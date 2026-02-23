@@ -94,6 +94,8 @@ export default function App() {
   const [mustHaveSections, setMustHaveSections] = useState('Problem,Solution,Plan,Impact,CTA');
   const [constraints, setConstraints] = useState('Max 5 bullets per slide');
   const [projectPath, setProjectPath] = useState('projects/testops-platform');
+  const [jiraJson, setJiraJson] = useState('');
+  const [testReportJson, setTestReportJson] = useState('');
   const [brandPrimary, setBrandPrimary] = useState(localStorage.getItem('bas_brand_primary') || '#7c5cff');
   const [brandFont, setBrandFont] = useState(localStorage.getItem('bas_brand_font') || 'Inter, Arial');
   const [brandLogo, setBrandLogo] = useState(localStorage.getItem('bas_brand_logo') || '');
@@ -266,9 +268,14 @@ export default function App() {
     if (!token) return alert('Please login first');
     setLlmLoading(true);
     try {
+      let jiraData = null;
+      let testReport = null;
+      try { jiraData = jiraJson.trim() ? JSON.parse(jiraJson) : null; } catch { return alert('Invalid Jira JSON'); }
+      try { testReport = testReportJson.trim() ? JSON.parse(testReportJson) : null; } catch { return alert('Invalid test report JSON'); }
+
       const r = await authedFetch(`${API}/qa/autodeck`, {
         method: 'POST',
-        body: JSON.stringify({ projectPath, title: 'QA/TestOps Auto Deck' }),
+        body: JSON.stringify({ projectPath, title: 'QA/TestOps Auto Deck', jiraData, testReport }),
       });
       const d = await r.json();
       if (d?.slides?.length) {
@@ -361,6 +368,8 @@ export default function App() {
           <textarea value={mustHaveSections} onChange={(e) => setMustHaveSections(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Must-have sections (comma separated)" />
           <textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Constraints (style, format, business limits)" />
           <input value={projectPath} onChange={(e) => setProjectPath(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Project path for QA auto-deck (e.g., projects/testops-platform)" />
+          <textarea value={jiraJson} onChange={(e) => setJiraJson(e.target.value)} rows={3} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder='Paste Jira JSON (optional). Example: {"issues":[{"status":{"name":"Open"}}]}' />
+          <textarea value={testReportJson} onChange={(e) => setTestReportJson(e.target.value)} rows={3} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder='Paste Test Report JSON (optional). Example: {"summary":{"passed":80,"failed":5,"total":85}}' />
           <div className="row"><button onClick={() => generateDeck('v2')}>Generate from Builder</button><button onClick={generateQaAutoDeck}>{llmLoading ? 'Working...' : 'QA/TestOps Auto Deck'}</button></div>
 
           <div className="panel-title" style={{ marginTop: 16 }}>My Decks</div>
