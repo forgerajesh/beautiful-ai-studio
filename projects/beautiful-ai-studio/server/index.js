@@ -3,11 +3,21 @@ import cors from 'cors';
 import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 8787;
 const JWT_SECRET = process.env.JWT_SECRET || 'beautiful-ai-studio-secret';
-const db = new Database(new URL('./studio.db', import.meta.url).pathname);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const APP_ROOT = path.resolve(__dirname, '..');
+const DIST_DIR = path.resolve(APP_ROOT, 'dist');
+const DATA_DIR = process.env.DATA_DIR || path.resolve(APP_ROOT, 'data');
+const DB_PATH = process.env.DB_PATH || path.resolve(DATA_DIR, 'studio.db');
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const db = new Database(DB_PATH);
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
@@ -33,6 +43,9 @@ CREATE TABLE IF NOT EXISTS decks (
 
 app.use(cors());
 app.use(express.json({ limit: '3mb' }));
+if (fs.existsSync(DIST_DIR)) {
+  app.use(express.static(DIST_DIR));
+}
 
 const LLM_BASE_URL = process.env.LLM_BASE_URL || 'https://api.openai.com/v1';
 const LLM_API_KEY = process.env.LLM_API_KEY || '';
@@ -222,4 +235,12 @@ app.post('/api/ai/improve-slide', auth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`DeckForge Studio API running on :${PORT}`));
+if (fs.existsSync(DIST_DIR)) {
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    if (req.path.startsWith('/p/')) return next();
+    return res.sendFile(path.join(DIST_DIR, 'index.html'));
+  });
+}
+
+app.listen(PORT, () => console.log(`DeckForge Studio API running on :${PORT} (db: ${DB_PATH})`));

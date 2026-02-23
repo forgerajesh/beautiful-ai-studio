@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import pptxgen from 'pptxgenjs';
 
-const API = 'http://localhost:8787/api';
+const API = import.meta.env.VITE_API_BASE || '/api';
 const APP_NAME = 'DeckForge Studio';
 const THEMES = {
   Nebula: { bg: '#0b1022', card: '#131a34', text: '#f4f6ff', accent: '#7c5cff' },
