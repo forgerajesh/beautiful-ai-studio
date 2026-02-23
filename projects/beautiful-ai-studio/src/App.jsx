@@ -9,6 +9,7 @@ const THEMES = {
   Aurora: { bg: '#071b22', card: '#0d2a33', text: '#ecffff', accent: '#06b6d4' },
 };
 const LAYOUTS = ['Title', 'Two Column', 'Metrics', 'Timeline'];
+const TEMPLATES = [];
 
 const PROMPT_PRESETS = [
   {
