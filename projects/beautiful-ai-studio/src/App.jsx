@@ -364,27 +364,6 @@ export default function App() {
           <textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Constraints (style, format, business limits)" />
           <div className="row"><button onClick={() => generateDeck('v2')}>Generate from Builder</button></div>
 
-          <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace ({allTemplates.length})</div>
-          <input placeholder="Search templates..." value={templateSearch} onChange={(e) => { setTemplateSearch(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <select value={templateCategory} onChange={(e) => { setTemplateCategory(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 10, padding: 10 }}><option value="All">All</option><option value="Favorites">Favorites</option><option value="Custom">Custom</option>{Object.keys(TEMPLATE_CATEGORIES).map((c) => <option key={c}>{c}</option>)}</select>
-          <div className="stack">{filteredTemplates.slice(0, templateLimit).map((t) => {
-            const key = String(t.id || t.name); const fav = favorites.includes(key); const [icon, bg] = thumb(t.category);
-            return <div key={key} className="tpl-row"><button className="thumb tpl-card" onClick={() => { setPrompt(t.prompt); setTimeout(generateDeck, 50); }}><span className="tpl-preview" style={{ background: bg }}>{icon}</span><span>{t.name}<small>{t.badge}</small></span></button><button onClick={() => toggleFavorite(key)}>{fav ? '★' : '☆'}</button></div>;
-          })}</div>
-          {templateLimit < filteredTemplates.length && <button style={{ marginTop: 8, width: '100%' }} onClick={() => setTemplateLimit((n) => n + 60)}>Load 60 more</button>}
-
-          <div className="panel-title" style={{ marginTop: 16 }}>Favorite Board (Drag to reorder)</div>
-          <div className="fav-board">{favoriteTemplates.slice(0, 10).map((t) => {
-            const key = String(t.id || t.name); const [icon, bg] = thumb(t.category);
-            return <div key={key} className="fav-chip" draggable onDragStart={() => onDragStartFav(key)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDropFav(key)} style={{ background: bg }}>{icon} {t.name}</div>;
-          })}</div>
-
-          <div className="panel-title" style={{ marginTop: 16 }}>Custom Template Builder</div>
-          <input placeholder="Template name" value={customName} onChange={(e) => setCustomName(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <input placeholder="Category" value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <textarea placeholder="Prompt..." value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} rows={3} style={{ width: '100%', marginBottom: 8, padding: 10 }} />
-          <button onClick={addCustomTemplate}>Save Custom Template</button>
-
           <div className="panel-title" style={{ marginTop: 16 }}>My Decks</div>
           <div className="stack">{decks.map((d) => <button key={d.id} className="thumb" onClick={() => openDeck(d.id)}><span>{d.title}</span><small>{d.is_published ? `Published: ${d.slug}` : 'Draft'}</small></button>)}</div>
         </aside>
