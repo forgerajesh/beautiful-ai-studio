@@ -9,20 +9,21 @@ body { margin: 0; font-family: Inter, ui-sans-serif, system-ui; background: #0a1
 .landing-grid { max-width: 1100px; margin: 24px auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .landing-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.13); border-radius: 14px; padding: 16px; }
 .topbar {
-  height: 68px; border-bottom: 1px solid rgba(255,255,255,.12); display: grid;
-  grid-template-columns: 220px 1fr 280px; align-items: center; gap: 14px; padding: 10px 16px;
+  min-height: 68px; border-bottom: 1px solid rgba(255,255,255,.12); display: grid;
+  grid-template-columns: 200px 1fr minmax(320px, 42%); align-items: start; gap: 10px; padding: 10px 16px;
 }
-.logo { font-weight: 800; letter-spacing: .2px; color: var(--text); }
-.prompt-wrap { display: flex; gap: 8px; }
+.logo { font-weight: 800; letter-spacing: .2px; color: var(--text); padding-top: 8px; }
+.prompt-wrap { display: flex; flex-direction: column; gap: 8px; }
 .prompt-wrap input, .top-actions select, .top-actions button, .left button, .right input, .right textarea, .right select {
   background: rgba(255,255,255,.06); color: var(--text); border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
 }
 .prompt-wrap input { flex: 1; padding: 11px 12px; }
 button { cursor: pointer; padding: 10px 12px; }
 button.primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
-.top-actions { display: flex; gap: 8px; justify-content: end; }
+.top-actions { display: flex; gap: 8px; justify-content: end; flex-wrap: wrap; }
+.top-actions input, .top-actions select { min-width: 120px; }
 .top-actions select, .top-actions button { padding: 10px; }
-.workspace { display: grid; grid-template-columns: 280px 1fr 300px; gap: 14px; padding: 14px; height: calc(100vh - 68px); }
+.workspace { display: grid; grid-template-columns: 280px 1fr 300px; gap: 14px; padding: 14px; height: calc(100vh - 78px); }
 .left, .right { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 14px; }
 .panel-title { font-weight: 600; margin-bottom: 10px; }
 .stack { display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow: auto; }
@@ -53,6 +54,13 @@ button.primary { background: var(--accent); color: #fff; border: none; font-weig
 .health { margin-top: 8px; display: grid; gap: 8px; }
 .bar { background: rgba(255,255,255,.08); height: 10px; border-radius: 999px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); }
+@media (max-width: 1400px) {
+  .topbar { grid-template-columns: 1fr; }
+  .logo { padding-top: 0; }
+  .top-actions { justify-content: start; }
+  .workspace { height: auto; }
+}
+
 @media (max-width: 1200px) {
   .workspace { grid-template-columns: 1fr; height: auto; }
   .slide { width: 100%; }
