@@ -33,6 +33,42 @@ const TEMPLATES = (() => {
   return out;
 })();
 
+const PROMPT_PRESETS = [
+  {
+    id: 'investor',
+    name: 'Investor Pitch',
+    audience: 'Seed/Series-A investors',
+    goal: 'Secure funding decision',
+    slideCount: 8,
+    tone: 'Investor',
+    mustHaveSections: 'Problem,Solution,Market,Business Model,Competition,Traction,Roadmap,Ask',
+    constraints: 'Max 4 bullets per slide; include one metrics slide',
+    prompt: 'AI-powered QA automation platform',
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise Architecture',
+    audience: 'CTO, VP Engineering, QA Director',
+    goal: 'Approve target architecture and rollout',
+    slideCount: 10,
+    tone: 'Technical',
+    mustHaveSections: 'Current Challenges,Target Architecture,Security,CI/CD,Observability,Rollout,Risks,ROI',
+    constraints: 'Cloud-neutral design; compliance-ready controls',
+    prompt: 'Unified TestOps architecture for enterprise',
+  },
+  {
+    id: 'proposal',
+    name: 'Client Proposal',
+    audience: 'Client leadership team',
+    goal: 'Win implementation engagement',
+    slideCount: 7,
+    tone: 'Corporate',
+    mustHaveSections: 'Current State,Approach,Delivery Plan,Governance,Expected Outcomes,CTA',
+    constraints: 'Business language, low jargon',
+    prompt: 'QA transformation consulting proposal',
+  },
+];
+
 const seedSlides = [
   { id: crypto.randomUUID(), layout: 'Title', title: 'Your Presentation Title', bullets: ['AI-powered slide generation', 'Smart layouts', 'Brand themes'], notes: '' },
   { id: crypto.randomUUID(), layout: 'Two Column', title: 'Problem vs Solution', left: ['Manual deck creation is slow', 'Inconsistent design quality'], right: ['Use AI prompt to draft structure', 'Auto-fit content into layouts'], notes: '' },
@@ -82,6 +118,11 @@ export default function App() {
   const [customTemplates, setCustomTemplates] = useState(() => JSON.parse(localStorage.getItem('bas_custom_templates') || '[]'));
   const [llmLoading, setLlmLoading] = useState(false);
   const [tone, setTone] = useState('Corporate');
+  const [audience, setAudience] = useState('Leadership team');
+  const [goal, setGoal] = useState('Drive an approval decision');
+  const [slideCount, setSlideCount] = useState(6);
+  const [mustHaveSections, setMustHaveSections] = useState('Problem,Solution,Plan,Impact,CTA');
+  const [constraints, setConstraints] = useState('Max 5 bullets per slide');
   const [brandPrimary, setBrandPrimary] = useState(localStorage.getItem('bas_brand_primary') || '#7c5cff');
   const [brandFont, setBrandFont] = useState(localStorage.getItem('bas_brand_font') || 'Inter, Arial');
   const [brandLogo, setBrandLogo] = useState(localStorage.getItem('bas_brand_logo') || '');
@@ -146,7 +187,7 @@ export default function App() {
   const addSlide = (layout = 'Title') => { const next = { id: crypto.randomUUID(), layout, title: 'New Slide', bullets: ['Add content'], notes: '' }; setSlides((p) => [...p, next]); setActive(next.id); };
   const duplicateSlide = () => { if (!activeSlide) return; const copy = { ...activeSlide, id: crypto.randomUUID(), title: `${activeSlide.title} (Copy)` }; setSlides((p) => [...p, copy]); setActive(copy.id); };
   const removeSlide = () => { if (slides.length <= 1) return; const i = slides.findIndex((s) => s.id === active); const n = slides.filter((s) => s.id !== active); setSlides(n); setActive(n[Math.max(0, i - 1)].id); };
-  const generateDeck = async () => {
+  const generateDeck = async (mode = 'v1') => {
     setDeckTitle(prompt.slice(0, 80));
     setDeckId(null);
 
@@ -161,7 +202,16 @@ export default function App() {
     try {
       const r = await authedFetch(`${API}/ai/generate`, {
         method: 'POST',
-        body: JSON.stringify({ prompt, tone }),
+        body: JSON.stringify({
+          mode,
+          prompt,
+          tone,
+          audience,
+          goal,
+          slideCount: Number(slideCount) || 6,
+          mustHaveSections: mustHaveSections.split(',').map((s) => s.trim()).filter(Boolean),
+          constraints,
+        }),
       });
       const d = await r.json();
       if (d?.slides?.length) {
@@ -229,6 +279,18 @@ export default function App() {
     const next = [t, ...customTemplates]; setCustomTemplates(next); localStorage.setItem('bas_custom_templates', JSON.stringify(next)); setCustomName(''); setCustomPrompt('');
   };
 
+  const applyPreset = (presetId) => {
+    const p = PROMPT_PRESETS.find((x) => x.id === presetId);
+    if (!p) return;
+    setPrompt(p.prompt);
+    setAudience(p.audience);
+    setGoal(p.goal);
+    setSlideCount(p.slideCount);
+    setTone(p.tone);
+    setMustHaveSections(p.mustHaveSections);
+    setConstraints(p.constraints);
+  };
+
   const onDragStartFav = (id) => setDraggingFav(String(id));
   const onDropFav = (overId) => {
     const over = String(overId); if (!draggingFav || draggingFav === over) return;
@@ -262,7 +324,13 @@ export default function App() {
     <div className="app" style={{ '--bg': theme.bg, '--card': theme.card, '--text': theme.text, '--accent': brandPrimary || theme.accent, fontFamily: brandFont }}>
       <header className="topbar">
         <div className="logo">{APP_NAME}</div>
-        <div className="prompt-wrap"><input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation goal..." /><button className="primary" onClick={generateDeck}>{llmLoading ? 'Generating...' : 'Generate Smart Slides (LLM)'}</button></div>
+        <div className="prompt-wrap">
+          <input value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe presentation topic..." />
+          <div className="row" style={{ marginTop: 8 }}>
+            <button className="primary" onClick={() => generateDeck('v1')}>{llmLoading ? 'Generating...' : 'Generate'}</button>
+            <button className="primary" onClick={() => generateDeck('v2')}>{llmLoading ? 'Generating...' : 'Generate v2 (Structured)'}</button>
+          </div>
+        </div>
         <div className="top-actions">
           <select value={tone} onChange={(e) => setTone(e.target.value)}>
             <option>Corporate</option>
@@ -270,6 +338,9 @@ export default function App() {
             <option>Creative</option>
             <option>Technical</option>
           </select>
+          <input placeholder="audience" value={audience} onChange={(e) => setAudience(e.target.value)} />
+          <input placeholder="goal" value={goal} onChange={(e) => setGoal(e.target.value)} />
+          <input type="number" min="4" max="14" placeholder="slides" value={slideCount} onChange={(e) => setSlideCount(e.target.value)} style={{ width: 88 }} />
           <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}
@@ -283,6 +354,15 @@ export default function App() {
           <div className="stack">{slides.map((s, i) => <button key={s.id} className={`thumb ${s.id === active ? 'active' : ''}`} onClick={() => setActive(s.id)}><span>{i + 1}. {s.layout}</span><small>{s.title}</small></button>)}</div>
           <div className="row"><button onClick={() => addSlide()}>+ Slide</button><button onClick={duplicateSlide}>Duplicate</button><button onClick={removeSlide}>Delete</button></div>
           <div className="row" style={{ marginTop: 8 }}><button onClick={saveDeck}>Save</button><button onClick={publishDeck}>Publish</button><button onClick={exportPpt}>PPT</button></div>
+
+          <div className="panel-title" style={{ marginTop: 16 }}>Prompt Builder</div>
+          <select onChange={(e) => applyPreset(e.target.value)} defaultValue="" style={{ width: '100%', marginBottom: 8, padding: 10 }}>
+            <option value="">Apply preset...</option>
+            {PROMPT_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <textarea value={mustHaveSections} onChange={(e) => setMustHaveSections(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Must-have sections (comma separated)" />
+          <textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Constraints (style, format, business limits)" />
+          <div className="row"><button onClick={() => generateDeck('v2')}>Generate from Builder</button></div>
 
           <div className="panel-title" style={{ marginTop: 16 }}>Template Marketplace ({allTemplates.length})</div>
           <input placeholder="Search templates..." value={templateSearch} onChange={(e) => { setTemplateSearch(e.target.value); setTemplateLimit(60); }} style={{ width: '100%', marginBottom: 8, padding: 10 }} />

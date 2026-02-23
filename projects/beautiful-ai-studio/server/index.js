@@ -150,7 +150,17 @@ app.get('/p/:slug', (req, res) => {
 });
 
 app.post('/api/ai/generate', auth, async (req, res) => {
-  const { prompt, tone = 'Corporate' } = req.body || {};
+  const {
+    prompt,
+    tone = 'Corporate',
+    slideCount = 6,
+    audience = 'Leadership team',
+    goal = 'Inform and drive decision',
+    mustHaveSections = [],
+    constraints = '',
+    mode = 'v1',
+  } = req.body || {};
+
   if (!prompt) return res.status(400).json({ error: 'prompt required' });
 
   if (!LLM_API_KEY) {
@@ -165,6 +175,27 @@ app.post('/api/ai/generate', auth, async (req, res) => {
   }
 
   const schemaHint = `Return ONLY valid JSON object with this exact shape: {"slides":[{"layout":"Title|Two Column|Metrics|Timeline","title":"...","bullets":[...],"left":[...],"right":[...],"metrics":[{"label":"...","value":"..."}],"milestones":[...],"notes":"..."}]}`;
+  const strictSystem = [
+    'You are a world-class presentation strategist and slide designer.',
+    `Tone: ${tone}.`,
+    'Create executive-ready, beautiful, concise slides.',
+    'One key message per slide.',
+    'Maximum 4-6 bullets per slide.',
+    'Enforce narrative flow: context -> insight -> options -> recommendation -> execution -> CTA.',
+    'Include at least one Metrics or Timeline slide when relevant.',
+    'Last slide must contain a clear call-to-action.',
+    schemaHint,
+  ].join(' ');
+
+  const userBrief = [
+    `Topic: ${prompt}`,
+    `Audience: ${audience}`,
+    `Goal: ${goal}`,
+    `Target slide count: ${Math.max(4, Math.min(14, Number(slideCount) || 6))}`,
+    `Must-have sections: ${Array.isArray(mustHaveSections) && mustHaveSections.length ? mustHaveSections.join(', ') : 'none'}`,
+    `Constraints: ${constraints || 'none'}`,
+    `Generation mode: ${mode}`,
+  ].join('\n');
 
   try {
     const r = await fetch(`${LLM_BASE_URL}/chat/completions`, {
@@ -175,10 +206,10 @@ app.post('/api/ai/generate', auth, async (req, res) => {
       },
       body: JSON.stringify({
         model: LLM_MODEL,
-        temperature: 0.6,
+        temperature: mode === 'v2' ? 0.45 : 0.6,
         messages: [
-          { role: 'system', content: `You are a world-class presentation designer. Generate executive-ready beautiful slides. Tone: ${tone}. ${schemaHint}` },
-          { role: 'user', content: `Create a 6-slide deck from this prompt: ${prompt}` },
+          { role: 'system', content: strictSystem },
+          { role: 'user', content: userBrief },
         ],
       }),
     });
@@ -188,7 +219,7 @@ app.post('/api/ai/generate', auth, async (req, res) => {
     const cleaned = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleaned);
     const slides = (parsed.slides || []).map((s, idx) => ({ id: `ai-${Date.now()}-${idx}`, ...s }));
-    return res.json({ slides });
+    return res.json({ slides, mode });
   } catch (e) {
     return res.status(500).json({ error: 'AI generation failed', detail: String(e) });
   }
