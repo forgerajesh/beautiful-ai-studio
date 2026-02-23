@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import os from 'os';
 
 const app = express();
 const PORT = process.env.PORT || 8787;
@@ -147,6 +148,51 @@ app.get('/p/:slug', (req, res) => {
     })
   }).catch(()=>document.getElementById('app').innerText='Deck not found');
   </script></body></html>`);
+});
+
+function readTextSafe(filePath, max = 3000) {
+  try {
+    if (!fs.existsSync(filePath)) return '';
+    return fs.readFileSync(filePath, 'utf8').slice(0, max);
+  } catch {
+    return '';
+  }
+}
+
+app.post('/api/qa/autodeck', auth, (req, res) => {
+  const { projectPath = 'projects/testops-platform', title = 'QA/TestOps Weekly Executive Update' } = req.body || {};
+  const baseWorkspace = path.resolve(APP_ROOT, '..');
+  const requested = path.resolve(baseWorkspace, projectPath);
+  if (!requested.startsWith(baseWorkspace)) return res.status(400).json({ error: 'Invalid project path' });
+
+  const readme = readTextSafe(path.join(requested, 'README.md'));
+  const arch = readTextSafe(path.join(requested, 'ARCHITECTURE.md')) || readTextSafe(path.join(requested, 'ARCHITECTURE_DIAGRAM.md'));
+  const ops = readTextSafe(path.join(requested, 'OPERATIONS.md'));
+  const delivery = readTextSafe(path.join(requested, 'DELIVERY_NOTE.md'));
+  const reportRaw = readTextSafe(path.join(requested, 'reports/etl-report.json'), 12000);
+
+  let passRate = 'n/a';
+  let failures = 'n/a';
+  if (reportRaw) {
+    try {
+      const j = JSON.parse(reportRaw);
+      const passed = Number(j.passed ?? j.summary?.passed ?? 0);
+      const failed = Number(j.failed ?? j.summary?.failed ?? 0);
+      const total = Number(j.total ?? j.summary?.total ?? (passed + failed));
+      passRate = total > 0 ? `${Math.round((passed / total) * 100)}%` : 'n/a';
+      failures = `${failed}`;
+    } catch {}
+  }
+
+  const slides = [
+    { id: `qa-${Date.now()}-1`, layout: 'Title', title, bullets: ['Auto-generated from project artifacts', `Project: ${projectPath}`, `Generated: ${new Date().toISOString()}`], notes: '' },
+    { id: `qa-${Date.now()}-2`, layout: 'Two Column', title: 'Project Snapshot', left: ['Source files scanned', 'README/ARCH/OPS/DELIVERY analyzed', 'Evidence-first summary'], right: [readme.slice(0, 140) || 'README not found', arch.slice(0, 140) || 'ARCH not found', delivery.slice(0, 140) || 'Delivery note not found'], notes: '' },
+    { id: `qa-${Date.now()}-3`, layout: 'Metrics', title: 'Quality Signals', metrics: [{ label: 'Pass Rate', value: passRate }, { label: 'Failures', value: failures }, { label: 'Artifacts', value: '4+' }], notes: '' },
+    { id: `qa-${Date.now()}-4`, layout: 'Two Column', title: 'Operations & Risks', left: ['Current operating model', ops.slice(0, 110) || 'OPS summary unavailable', 'Automation execution status'], right: ['Top risks', 'Relay / infra dependency', 'Mitigation: retries + SOP + health checks'], notes: '' },
+    { id: `qa-${Date.now()}-5`, layout: 'Timeline', title: 'Next Sprint Actions', milestones: ['Stabilize execution reliability', 'Improve reporting depth and trend charts', 'Expand reusable enterprise templates', 'Finalize stakeholder-ready weekly deck automation'], notes: '' },
+  ];
+
+  return res.json({ slides, deckTitle: title, sourcePath: projectPath, host: os.hostname() });
 });
 
 app.post('/api/ai/generate', auth, async (req, res) => {

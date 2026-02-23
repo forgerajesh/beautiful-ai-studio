@@ -93,6 +93,7 @@ export default function App() {
   const [slideCount, setSlideCount] = useState(6);
   const [mustHaveSections, setMustHaveSections] = useState('Problem,Solution,Plan,Impact,CTA');
   const [constraints, setConstraints] = useState('Max 5 bullets per slide');
+  const [projectPath, setProjectPath] = useState('projects/testops-platform');
   const [brandPrimary, setBrandPrimary] = useState(localStorage.getItem('bas_brand_primary') || '#7c5cff');
   const [brandFont, setBrandFont] = useState(localStorage.getItem('bas_brand_font') || 'Inter, Arial');
   const [brandLogo, setBrandLogo] = useState(localStorage.getItem('bas_brand_logo') || '');
@@ -261,6 +262,29 @@ export default function App() {
     setConstraints(p.constraints);
   };
 
+  const generateQaAutoDeck = async () => {
+    if (!token) return alert('Please login first');
+    setLlmLoading(true);
+    try {
+      const r = await authedFetch(`${API}/qa/autodeck`, {
+        method: 'POST',
+        body: JSON.stringify({ projectPath, title: 'QA/TestOps Auto Deck' }),
+      });
+      const d = await r.json();
+      if (d?.slides?.length) {
+        setSlides(d.slides);
+        setActive(d.slides[0].id);
+        setDeckTitle(d.deckTitle || 'QA/TestOps Auto Deck');
+      } else {
+        alert(d.error || 'Auto deck generation failed');
+      }
+    } catch {
+      alert('Auto deck generation failed');
+    } finally {
+      setLlmLoading(false);
+    }
+  };
+
   const onDragStartFav = (id) => setDraggingFav(String(id));
   const onDropFav = (overId) => {
     const over = String(overId); if (!draggingFav || draggingFav === over) return;
@@ -336,7 +360,8 @@ export default function App() {
           </select>
           <textarea value={mustHaveSections} onChange={(e) => setMustHaveSections(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Must-have sections (comma separated)" />
           <textarea value={constraints} onChange={(e) => setConstraints(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Constraints (style, format, business limits)" />
-          <div className="row"><button onClick={() => generateDeck('v2')}>Generate from Builder</button></div>
+          <input value={projectPath} onChange={(e) => setProjectPath(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 10 }} placeholder="Project path for QA auto-deck (e.g., projects/testops-platform)" />
+          <div className="row"><button onClick={() => generateDeck('v2')}>Generate from Builder</button><button onClick={generateQaAutoDeck}>{llmLoading ? 'Working...' : 'QA/TestOps Auto Deck'}</button></div>
 
           <div className="panel-title" style={{ marginTop: 16 }}>My Decks</div>
           <div className="stack">{decks.map((d) => <button key={d.id} className="thumb" onClick={() => openDeck(d.id)}><span>{d.title}</span><small>{d.is_published ? `Published: ${d.slug}` : 'Draft'}</small></button>)}</div>
