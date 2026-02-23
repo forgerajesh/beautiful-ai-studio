@@ -332,18 +332,22 @@ export default function App() {
           </div>
         </div>
         <div className="top-actions">
-          <select value={tone} onChange={(e) => setTone(e.target.value)}>
-            <option>Corporate</option>
-            <option>Investor</option>
-            <option>Creative</option>
-            <option>Technical</option>
-          </select>
-          <input placeholder="audience" value={audience} onChange={(e) => setAudience(e.target.value)} />
-          <input placeholder="goal" value={goal} onChange={(e) => setGoal(e.target.value)} />
-          <input type="number" min="4" max="14" placeholder="slides" value={slideCount} onChange={(e) => setSlideCount(e.target.value)} style={{ width: 88 }} />
-          <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          {!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}
+          <div className="top-meta">
+            <select value={tone} onChange={(e) => setTone(e.target.value)}>
+              <option>Corporate</option>
+              <option>Investor</option>
+              <option>Creative</option>
+              <option>Technical</option>
+            </select>
+            <input placeholder="audience" value={audience} onChange={(e) => setAudience(e.target.value)} />
+            <input placeholder="goal" value={goal} onChange={(e) => setGoal(e.target.value)} />
+            <input type="number" min="4" max="14" placeholder="slides" value={slideCount} onChange={(e) => setSlideCount(e.target.value)} style={{ width: 88 }} />
+          </div>
+          <div className="top-auth">
+            <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {!token ? <><button onClick={register}>Register</button><button onClick={login}>Login</button></> : <button onClick={logout}>Logout</button>}
+          </div>
         </div>
       </header>
 
