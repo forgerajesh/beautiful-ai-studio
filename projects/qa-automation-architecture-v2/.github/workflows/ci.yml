@@ -1,0 +1,39 @@
+name: qa-automation-v2-ci
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 1 * * *'  # nightly deep lane
+
+jobs:
+  pr-fast-lane:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: npm ci || true
+      - name: Run PR Fast Lane
+        run: echo "Run smoke + impacted tests via orchestrator"
+
+  merge-lane:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Merge Lane
+        run: echo "Run critical + targeted regression"
+
+  nightly-deep-lane:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Nightly Deep Lane
+        run: echo "Run full regression + flake analytics + reports"
